@@ -1,0 +1,19 @@
+{
+  "sheetName": "BaoCaoKQHDKD",
+  "title": "BÁO CÁO KẾT QUẢ HOẠT ĐỘNG KINH DOANH",
+  "titleRowIndex": 0,
+  "headerRowIndex": 2,
+  "headers": [
+    "Chỉ tiêu",
+    "MS",
+    "T/M",
+    "Tháng 01",
+    "Tháng 02",
+    "Tháng 03",
+    "Tháng 04",
+    "Tháng 05",
+    "Năm",
+    "Quý"
+  ],
+  "columnWidths": [24, 10, 10, 14, 14, 14, 14, 14, 14, 14]
+}

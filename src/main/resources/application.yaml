@@ -1,0 +1,109 @@
+spring:
+  application:
+    name: ledger-service
+    thread-pool:
+      request-log:
+        pool-core-size: 8
+        pool-max-size: 16
+        queue-capacity: 500
+        thread-name-prefix: async:request-log-
+        keep-alive-seconds: 60
+      business-log:
+        pool-core-size: 8
+        pool-max-size: 16
+        queue-capacity: 500
+        thread-name-prefix: async:business-log-
+        keep-alive-seconds: 60
+      statistics:
+        pool-core-size: 8
+        pool-max-size: 16
+        queue-capacity: 250
+        thread-name-prefix: async:statistics-
+        keep-alive-seconds: 60
+  jpa:
+    show-sql: false
+    hibernate:
+      ddl-auto: none
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: false
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5433/ledger_db}
+    username: ${SPRING_DATASOURCE_USERNAME:ledger_user}
+    password: ${SPRING_DATASOURCE_PASSWORD:ledger_pass}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      connection-timeout: 20000
+      maximum-pool-size: 15
+      max-lifetime: 1800000
+      minimum-idle: 5
+  flyway:
+    baseline-on-migrate: false
+    locations: classpath:db/migration
+    validate-on-migrate: true
+    out-of-order: true
+    enabled: true
+  mail:
+    host: ${SPRING_MAIL_HOST:smtp.gmail.com}
+    port: ${SPRING_MAIL_PORT:587}
+    username: ${SPRING_MAIL_USERNAME:truongducbao290402@gmail.com}
+    password: ${SPRING_MAIL_PASSWORD:tfcr josj npro npsy}
+    properties:
+      mail:
+        smtp:
+          auth: ${SPRING_MAIL_SMTP_AUTH:true}
+          starttls:
+            enable: ${SPRING_MAIL_SMTP_STARTTLS:true}
+redisson:
+  host: ${REDIS_HOST:localhost}
+  port: ${REDIS_PORT:6378}
+  password:
+  database: 0
+  timeout: 3000
+server:
+  port: 8091
+
+i18n:
+  default-locale: vi-VN
+  default-encode: UTF-8
+  supported-locales:
+    - vi-VN
+    - en-US
+  message-sources:
+    basenames:
+      - classpath:i18n/message
+      - classpath:i18n/error
+      - classpath:i18n/menu
+    cache-expires-in: 3600s  # 1hour
+    reloadable: true
+cors:
+  allowed-origin-patterns:
+    - https://ob-consent.savyint.com
+    - https://iam-uat.savyint.com
+  allowed-methods: [ GET, POST, PUT, DELETE, PATCH, OPTIONS ]
+  allow-credentials: true
+  exposed-headers:
+    - Authorization
+  max-age: 10800 #seconds
+  register-cors-config: /**
+
+authentication:
+  jwt:
+    enable: true
+    key: suW1MFuErxKmhelwTpwhw6QaAoqZMRb64y81cR9rYeA
+    key-refresh: WDzqnd5bXrUvjuzzLagE0Vc5BppnVvKVv3rrie5xkmk
+    issuer: SAVYINT CORP
+    time-to-live: 3600
+
+app-setting:
+  interceptor: true
+  seed: false
+  superUser: admin
+  password: 123456a@
+  artifact: ledger-service
+  version: 1.0
+  resetPass:
+  urlLogin:
+  seedDataSystemParam:
+  tempDirectory:

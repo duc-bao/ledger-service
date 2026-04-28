@@ -1,0 +1,158 @@
+{
+  "templates": [
+    {
+      "code": "FOOTER",
+      "name": "MẪU FOOTER",
+      "params": [
+        "{{email}}",
+        "{{phone}}",
+        "{{currentYear}}",
+        "{{alias}}",
+        "{{address}}",
+        "{{webSite}}",
+        "{{name}}"
+      ],
+      "subject": "",
+      "template": "<footer style='text-align: center; padding: 20px; background-color: #f0f0f0;'><p><strong>{{alias}}</strong></p><p>Email: {{email}} | Phone: {{phone}}</p><p>Address: {{address}}</p><p>Website: <a href='{{webSite}}'>{{webSite}}</a></p><p>&copy; {{currentYear}} {{name}}. All rights reserved.</p></footer>"
+    },
+    {
+      "code": "OTP",
+      "name": "MẪU THÔNG BÁO MÃ XÁC THỰC",
+      "params": [
+        "{{title}}",
+        "{{fullname}}",
+        "{{otp}}"
+      ],
+      "subject": "THÔNG BÁO MÃ XÁC THỰC",
+      "template": "<div style='font-family: Arial, sans-serif; padding: 20px;'><h2>{{title}}</h2><p>Kính gửi {{fullname}},</p><p>Mã xác thực của bạn là: <strong>{{otp}}</strong></p><p>Vui lòng sử dụng mã này để hoàn tất quá trình xác thực. Mã có hiệu lực trong 5 phút.</p><p>Trân trọng,</p><p>Hệ thống</p></div>"
+    },
+    {
+      "code": "FORGOT_PASSWORD",
+      "name": "MẪU THÔNG BÁO KHÔI PHỤC MẬT KHẨU THÀNH CÔNG",
+      "params": [
+        "{{title}}",
+        "{{fullname}}",
+        "{{password}}"
+      ],
+      "subject": "THÔNG BÁO KHÔI PHỤC MẬT KHẨU THÀNH CÔNG",
+      "template": "<div style='font-family: Arial, sans-serif; padding: 20px;'><h2>{{title}}</h2><p>Kính gửi {{fullname}},</p><p>Chúng tôi đã khôi phục mật khẩu của bạn thành công. Mật khẩu mới của bạn là: <strong>{{password}}</strong></p><p>Vui lòng đăng nhập và đổi mật khẩu để bảo mật tài khoản.</p><p>Trân trọng,</p><p>Hệ thống</p></div>"
+    },
+    {
+      "code": "RESET_PASSWORD_BY_ADMIN",
+      "name": "MẪU THÔNG BÁO ĐẶT LẠI MẬT KHẨU THÀNH CÔNG",
+      "params": [
+        "{{title}}",
+        "{{fullname}}",
+        "{{password}}"
+      ],
+      "subject": "THÔNG BÁO ĐẶT LẠI MẬT KHẨU THÀNH CÔNG",
+      "template": "<div style='font-family: Arial, sans-serif; padding: 20px;'><h2>{{title}}</h2><p>Kính gửi {{fullname}},</p><p>Quản trị viên đã đặt lại mật khẩu của bạn. Mật khẩu mới của bạn là: <strong>{{password}}</strong></p><p>Vui lòng đăng nhập và đổi mật khẩu để bảo mật tài khoản.</p><p>Trân trọng,</p><p>Hệ thống</p></div>"
+    },
+    {
+      "code": "REQUEST_FORGOT_PASSWORD",
+      "name": "MẪU THÔNG BÁO YÊU CẦU LẤY LẠI MẬT KHẨU",
+      "params": [
+        "{{title}}",
+        "{{fullname}}",
+        "{{timeExpired}}"
+      ],
+      "subject": "THÔNG BÁO YÊU CẦU LẤY LẠI MẬT KHẨU",
+      "template": "<div style='font-family: Arial, sans-serif; padding: 20px;'><h2>{{title}}</h2><p>Kính gửi {{fullname}},</p><p>Chúng tôi đã nhận được yêu cầu lấy lại mật khẩu của bạn. Vui lòng thực hiện trong vòng {{timeExpired}} phút.</p><p>Nếu bạn không thực hiện yêu cầu này, vui lòng bỏ qua email.</p><p>Trân trọng,</p><p>Hệ thống</p></div>"
+    },
+    {
+      "code": "REGISTER_USER_INTERNAL",
+      "name": "MẪU THÔNG BÁO ĐĂNG KÝ TÀI KHOẢN THÀNH CÔNG",
+      "params": [
+        "{{title}}",
+        "{{fullname}}",
+        "{{username}}",
+        "{{password}}"
+      ],
+      "subject": "THÔNG BÁO ĐĂNG KÝ TÀI KHOẢN NỘI BỘ THÀNH CÔNG",
+      "template": "<div style='font-family: Arial, sans-serif; padding: 20px;'><h2>{{title}}</h2><p>Kính gửi {{fullname}},</p><p>Chúc mừng bạn đã đăng ký tài khoản nội bộ thành công!</p><p>Tên đăng nhập: <strong>{{username}}</strong></p><p>Mật khẩu: <strong>{{password}}</strong></p><p>Vui lòng đăng nhập và đổi mật khẩu để bảo mật tài khoản.</p><p>Trân trọng,</p><p>Hệ thống</p></div>"
+    },
+    {
+      "code": "REGISTER_USER_CUSTOMER_API",
+      "name": "MẪU THÔNG BÁO ĐĂNG KÝ TÀI KHOẢN KHÁCH HÀNG (API) THÀNH CÔNG",
+      "params": [
+        "{{title}}",
+        "{{fullname}}",
+        "{{username}}"
+      ],
+      "subject": "THÔNG BÁO MÃ KÍCH HOẠT TÀI KHOẢN",
+      "template": "<div style='font-family: Arial, sans-serif; padding: 20px; background-color: #f9f9f9; border-radius: 6px;'>\\\n    <h2 style='color: #333;'>{{title}}</h2>\\\n    <p style='font-size: 14px;'>Kính gửi <strong>{{fullname}}</strong>,</p>\\\n    <p style='font-size: 14px;'>Chúc mừng bạn đã đăng ký tài khoản khách hàng qua API thành công!</p>\\\n    <p style='font-size: 14px;'>Tài khoản: <strong>{{username}}</strong></p>\\\n    <p style='font-size: 14px;'>Vui lòng sử dụng mã OTP dưới đây để kích hoạt tài khoản của bạn:</p>\\\n    <div style='margin: 20px 0; text-align: center;'>\\\n      <span style='display: inline-block; background-color: #e0e0e0; padding: 10px 20px; font-size: 18px; font-weight: bold; letter-spacing: 2px;'>{{otp}}</span>\\\n    </div>\\\n    <p style='font-size: 14px;'>Mã OTP có hiệu lực trong vòng 5 phút.</p>\\\n    <p style='font-size: 14px;'>Trân trọng,<br/>Hệ thống</p>\\\n  </div>"
+    },
+    {
+      "code": "REGISTER_USER_CUSTOMER_APP",
+      "name": "MẪU THÔNG BÁO ĐĂNG KÝ TÀI KHÁCH HÀNG (APP) KHOẢN THÀNH CÔNG",
+      "params": [
+        "{{title}}",
+        "{{fullname}}",
+        "{{username}}",
+        "{{password}}"
+      ],
+      "subject": "THÔNG BÁO ĐĂNG KÝ TÀI KHOẢN THÀNH CÔNG",
+      "template": "<div style='font-family: Arial, sans-serif; padding: 20px;'><h2>{{title}}</h2><p>Kính gửi {{fullname}},</p><p>Chúc mừng bạn đã đăng ký tài khoản khách hàng qua ứng dụng thành công!</p><p>Tên đăng nhập: <strong>{{username}}</strong></p><p>Mật khẩu: <strong>{{password}}</strong></p><p>Vui lòng đăng nhập và đổi mật khẩu để bảo mật tài khoản.</p><p>Trân trọng,</p><p>Hệ thống</p></div>"
+    },
+    {
+      "code": "RECOVER_USER",
+      "name": "MẪU LẤY LẠI THÔNG TIN TÀI KHOẢN",
+      "params": [
+        "{{title}}",
+        "{{fullname}}",
+        "{{username}}",
+        "{{password}}"
+      ],
+      "subject": "LẤY LẠI THÔNG TIN TÀI KHOẢN",
+      "template": "<div style='font-family: Arial, sans-serif; padding: 20px;'><h2>{{title}}</h2><p>Kính gửi {{fullname}},</p><p>Chúng tôi đã khôi phục thông tin tài khoản của bạn thành công.</p><p>Tên đăng nhập: <strong>{{username}}</strong></p><p>Mật khẩu: <strong>{{password}}</strong></p><p>Vui lòng đăng nhập và đổi mật khẩu để bảo mật tài khoản.</p><p>Trân trọng,</p><p>Hệ thống</p></div>"
+    },
+    {
+      "code": "ACTIVATE_ACCOUNT",
+      "name": "MẪU THÔNG BÁO KÍCH HOẠT TÀI KHOẢN",
+      "params": [
+        "{{title}}",
+        "{{fullname}}",
+        "{{activationLink}}",
+        "{{timeExpired}}"
+      ],
+      "subject": "THÔNG BÁO KÍCH HOẠT TÀI KHOẢN",
+      "template": "<div style='font-family: Arial, sans-serif; padding: 20px;'><h2>{{title}}</h2><p>Kính gửi {{fullname}},</p><p>Vui lòng kích hoạt tài khoản của bạn bằng cách nhấp vào liên kết sau:</p><p><a href='{{activationLink}}'>Kích hoạt tài khoản</a></p><p>Liên kết có hiệu lực trong {{timeExpired}} phút.</p><p>Trân trọng,</p><p>Hệ thống</p></div>"
+    },
+    {
+      "code": "ACCOUNT_STATUS_CHANGE",
+      "name": "MẪU THÔNG BÁO THAY ĐỔI TRẠNG THÁI TÀI KHOẢN",
+      "params": [
+        "{{title}}",
+        "{{fullname}}",
+        "{{status}}",
+        "{{reason}}"
+      ],
+      "subject": "THÔNG BÁO THAY ĐỔI TRẠNG THÁI TÀI KHOẢN",
+      "template": "<div style='font-family: Arial, sans-serif; padding: 20px;'><h2>{{title}}</h2><p>Kính gửi {{fullname}},</p><p>Trạng thái tài khoản của bạn đã được thay đổi thành: <strong>{{status}}</strong></p><p>Lý do: {{reason}}</p><p>Nếu bạn có thắc mắc, vui lòng liên hệ bộ phận hỗ trợ.</p><p>Trân trọng,</p><p>Hệ thống</p></div>"
+    },
+    {
+      "code": "ACCOUNT_EXPIRATION",
+      "name": "MẪU THÔNG BÁO TÀI KHOẢN HẾT HẠN",
+      "params": [
+        "{{title}}",
+        "{{fullname}}",
+        "{{expirationDate}}"
+      ],
+      "subject": "THÔNG BÁO TÀI KHOẢN HẾT HẠN",
+      "template": "<div style='font-family: Arial, sans-serif; padding: 20px;'><h2>{{title}}</h2><p>Kính gửi {{fullname}},</p><p>Tài khoản của bạn sẽ hết hạn vào ngày {{expirationDate}}.</p><p>Vui lòng gia hạn để tiếp tục sử dụng dịch vụ.</p><p>Trân trọng,</p><p>Hệ thống</p></div>"
+    },
+    {
+      "code":"ONBOARDING",
+      "name": "MẪU ĐƠN ĐĂNG KÝ GIA NHẬP NGÂN HÀNG MỞ",
+      "params":[
+        "{{companyName}}",
+        "{{companyCode}}",
+        "{{companyAddress}}",
+        "{{representative}}",
+        "{{position}}",
+        "{{phone}}",
+        "{{email}}"
+      ]
+    }
+  ]
+}

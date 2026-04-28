@@ -1,0 +1,66 @@
+{
+  "menus": [
+    {
+      "code": "DASHBOARD",
+      "icon": "fas fa-home",
+      "path": "/chart",
+      "offset": 1,
+      "actions": [
+        "READ"
+      ],
+      "parentCode": ""
+    },
+    {
+      "code": "DASHBOARD_AI",
+      "icon": "",
+      "path": "/dasboard-ai",
+      "offset": 2,
+      "actions": [
+        "READ"
+      ],
+      "parentCode": ""
+    },
+    {
+      "code": "MANAGER_LEDGER",
+      "icon": "",
+      "path": "/manager-ledger",
+      "offset": 1,
+      "actions": [
+        "READ",
+        "CREATE",
+        "UPDATE",
+        "DELETE",
+        "ASSIGN_PERMISSION"
+      ],
+      "parentCode": ""
+    },
+    {
+      "code": "MANAGER_USER",
+      "icon": "",
+      "path": "/manager-user",
+      "offset": 1,
+      "actions": [
+        "READ",
+        "CREATE",
+        "UPDATE",
+        "DELETE",
+        "ASSIGN_PERMISSION"
+      ],
+      "parentCode": ""
+    },
+    {
+      "code": "MANAGER_LOG",
+      "icon": "",
+      "path": "/manager-log",
+      "offset": 1,
+      "actions": [
+        "READ",
+        "CREATE",
+        "UPDATE",
+        "DELETE",
+        "ASSIGN_PERMISSION"
+      ],
+      "parentCode": ""
+    }
+  ]
+}
