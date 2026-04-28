@@ -33,6 +33,7 @@ public enum MessageCode {
     OTP_NO_ATTEMPTS_LEFT("INVALID", "error.otp.noAttemptsLeft"),
     OTP_INVALID("OTP_INVALID", "error.otp.invalid"),
     USER_NOT_FOUND("USER_NOT_FOUND", "error.auth.userNotFound"),
+    USER_LOCKED("FORBIDDEN", "error.auth.userLocked"),
     USERNAME_EXISTS("EXISTED", "error.auth.usernameExists"),
     USER_EMAIL_EXISTS("EXISTED", "error.auth.userEmailExists"),
     USER_PHONE_EXISTS("EXISTED", "error.auth.userPhoneExists"),

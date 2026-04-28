@@ -21,6 +21,7 @@ public class BaseResponse<T> {
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd HH:mm:ss")
     private OffsetDateTime timestamp;
     private Integer statusCode;
+    private MetaDataResp metaData;
 
     public static <T> BaseResponse<T> success(T data, String requestId, String description, String code, Integer statusCode) {
         return BaseResponse.<T>builder().success(true).data(data)

@@ -2,6 +2,7 @@ package com.ledger.ledgerservice.util;
 
 import com.ledger.ledgerservice.model.context.holder.RequestContextHolder;
 import com.ledger.ledgerservice.model.dto.response.BaseResponse;
+import com.ledger.ledgerservice.model.dto.response.MetaDataResp;
 import com.ledger.ledgerservice.model.enums.MessageCode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -30,6 +31,19 @@ public class ResponseHelper {
                 code.getCode(),
                 status.value()
         );
+        return ResponseEntity.status(status).body(response);
+    }
+
+    public <T> ResponseEntity<BaseResponse<T>> ok(MessageCode code, T data, MetaDataResp metaData, HttpStatus status) {
+        String msg = msgHelper.getMsg(code.getKey());
+        BaseResponse<T> response = BaseResponse.success(
+                data,
+                RequestContextHolder.getRequestId(),
+                msg,
+                code.getCode(),
+                status.value()
+        );
+        response.setMetaData(metaData);
         return ResponseEntity.status(status).body(response);
     }
 

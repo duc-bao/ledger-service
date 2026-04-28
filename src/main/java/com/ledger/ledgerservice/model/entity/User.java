@@ -2,6 +2,7 @@ package com.ledger.ledgerservice.model.entity;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.ledger.ledgerservice.model.enums.UserStatus;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Size;
 import lombok.*;
@@ -47,4 +48,9 @@ public class User extends EntityBase {
     @Column(name = "require_change", nullable = false)
     @Builder.Default
     private Boolean requireChange = false;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false, length = 20)
+    @Builder.Default
+    private UserStatus status = UserStatus.ACTIVE;
 }

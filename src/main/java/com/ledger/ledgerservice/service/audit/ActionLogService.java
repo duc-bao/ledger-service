@@ -3,8 +3,8 @@ package com.ledger.ledgerservice.service.audit;
 import com.ledger.ledgerservice.exception.BusinessException;
 import com.ledger.ledgerservice.model.context.RequestContext;
 import com.ledger.ledgerservice.model.dto.request.AuditLogSearchRequest;
+import com.ledger.ledgerservice.model.dto.response.AuditLogItemResponse;
 import com.ledger.ledgerservice.model.dto.response.AuditLogResponse;
-import com.ledger.ledgerservice.model.dto.response.AuditLogSearchResponse;
 import com.ledger.ledgerservice.model.entity.ActionLog;
 import com.ledger.ledgerservice.model.enums.MessageCode;
 import com.ledger.ledgerservice.repository.ActionLogRepository;
@@ -68,22 +68,17 @@ public class ActionLogService {
     }
 
     @Transactional(readOnly = true)
-    public AuditLogSearchResponse search(AuditLogSearchRequest request) {
-        int page = request.getPage() == null ? 0 : request.getPage();
+    public Page<AuditLogItemResponse> search(AuditLogSearchRequest request) {
+        int requestPage = request.getPage() == null ? 1 : request.getPage();
+        int page = requestPage <= 0 ? 0 : requestPage - 1;
         int size = request.getSize() == null ? 20 : request.getSize();
-        Sort.Direction direction = "ASC".equalsIgnoreCase(request.getSortDir()) ? Sort.Direction.ASC : Sort.Direction.DESC;
-        String sortBy = resolveSortBy(request.getSortBy());
+        Sort.Direction direction = "ASC".equalsIgnoreCase(request.getOrder()) ? Sort.Direction.ASC : Sort.Direction.DESC;
+        String sortBy = resolveSortBy(request.getSort());
 
         Specification<ActionLog> specification = buildSpecification(request);
         Page<ActionLog> result = actionLogRepository.findAll(specification, PageRequest.of(page, size, Sort.by(direction, sortBy)));
 
-        return AuditLogSearchResponse.builder()
-                .items(auditLogMapper.toItems(result.getContent()))
-                .totalElements(result.getTotalElements())
-                .totalPages(result.getTotalPages())
-                .page(result.getNumber())
-                .size(result.getSize())
-                .build();
+        return result.map(auditLogMapper::toItem);
     }
 
     @Transactional(readOnly = true)

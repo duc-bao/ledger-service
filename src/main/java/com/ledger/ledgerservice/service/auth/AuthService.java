@@ -7,6 +7,7 @@ import com.ledger.ledgerservice.model.dto.request.LoginVerifyOtpRequest;
 import com.ledger.ledgerservice.model.dto.response.LoginTokenResponse;
 import com.ledger.ledgerservice.model.entity.User;
 import com.ledger.ledgerservice.model.enums.MessageCode;
+import com.ledger.ledgerservice.model.enums.UserStatus;
 import com.ledger.ledgerservice.repository.UserRepository;
 import com.ledger.ledgerservice.model.dto.request.email.EmailSendRequest;
 import com.ledger.ledgerservice.service.email.EmailTemplateService;
@@ -46,6 +47,9 @@ public class AuthService {
         if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
             throw new BusinessException(MessageCode.PASSWORD_INVALID, HttpStatus.UNAUTHORIZED);
         }
+        if (user.getStatus() == UserStatus.LOCKED) {
+            throw new BusinessException(MessageCode.USER_LOCKED, HttpStatus.FORBIDDEN);
+        }
 
         if (!StringUtils.hasText(user.getEmail())) {
             throw new BusinessException(MessageCode.USER_EMAIL_REQUIRED, HttpStatus.BAD_REQUEST);
@@ -53,6 +57,9 @@ public class AuthService {
 
         if (otpCacheService.isLocked(user.getUsername())) {
             throw new BusinessException(MessageCode.OTP_NO_ATTEMPTS_LEFT, HttpStatus.TOO_MANY_REQUESTS);
+        }
+        if (user.getStatus() == UserStatus.LOCKED) {
+            throw new BusinessException(MessageCode.USER_LOCKED, HttpStatus.FORBIDDEN);
         }
 
         String otp = generateOtp();

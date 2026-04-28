@@ -9,8 +9,4 @@ import java.util.List;
 @Builder
 public class AuditLogSearchResponse {
     private List<AuditLogItemResponse> items;
-    private long totalElements;
-    private int totalPages;
-    private int page;
-    private int size;
 }

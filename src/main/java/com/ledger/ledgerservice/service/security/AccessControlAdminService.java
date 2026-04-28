@@ -21,6 +21,7 @@ import com.ledger.ledgerservice.model.entity.Permission;
 import com.ledger.ledgerservice.model.entity.UserGroup;
 import com.ledger.ledgerservice.model.entity.User;
 import com.ledger.ledgerservice.model.enums.MessageCode;
+import com.ledger.ledgerservice.model.enums.UserStatus;
 import com.ledger.ledgerservice.repository.GroupRepository;
 import com.ledger.ledgerservice.repository.MenuRepository;
 import com.ledger.ledgerservice.repository.PermissionRepository;
@@ -352,6 +353,7 @@ public class AccessControlAdminService {
                 .fullName(StringUtils.hasText(fullName) ? fullName : null)
                 .userType(StringUtils.hasText(userType) ? userType : null)
                 .requireChange(Boolean.TRUE.equals(request.getRequireChange()))
+                .status(UserStatus.ACTIVE)
                 .build());
 
         if (group != null) {
