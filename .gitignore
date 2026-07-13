@@ -39,3 +39,5 @@ out/
 .gradle/
 .gradle-user-home/
 codex/
+.ai/
+.cursorrules

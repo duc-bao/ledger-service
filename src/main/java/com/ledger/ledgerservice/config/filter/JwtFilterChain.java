@@ -43,7 +43,10 @@ public class JwtFilterChain extends OncePerRequestFilter {
     private static final Set<String> EXCLUDED_PATHS = Set.of(
             "/actuator/health",
             "/error",
-            "/api/v1/login/**"
+            "/api/v1/login/**",
+            "/v3/api-docs/**",
+            "/swagger-ui/**",
+            "/swagger-ui.html"
     );
 
     @Override
