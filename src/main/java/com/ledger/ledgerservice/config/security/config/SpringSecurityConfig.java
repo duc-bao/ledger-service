@@ -48,6 +48,7 @@ public class SpringSecurityConfig {
                         http -> http
                                 .requestMatchers("/actuator/health", "/error").permitAll()
                                 .requestMatchers("/api/v1/login/**").permitAll()
+                                .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
                                 .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll()
                                 .anyRequest().authenticated()
                 );

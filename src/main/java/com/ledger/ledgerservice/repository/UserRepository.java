@@ -8,6 +8,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.List;
 import java.util.Optional;
 
 public interface UserRepository extends JpaRepository<User, String> {
@@ -17,6 +18,7 @@ public interface UserRepository extends JpaRepository<User, String> {
     boolean existsByUsernameIgnoreCase(String username);
     boolean existsByEmailIgnoreCase(String email);
     boolean existsByPhone(String phone);
+    List<User> findAllByStatus(UserStatus status);
 
     @Query("""
             SELECT u FROM User u

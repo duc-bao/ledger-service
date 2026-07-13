@@ -1,10 +1,7 @@
 package com.ledger.ledgerservice.model.entity;
 
 import com.ledger.ledgerservice.model.constant.CommonConstant;
-import jakarta.persistence.Column;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.Id;
-import jakarta.persistence.MappedSuperclass;
+import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.experimental.SuperBuilder;
@@ -49,4 +46,15 @@ public class EntityBase {
 
     @Column(name = "description", length = 500)
     private String description;
+
+    @PrePersist
+    protected void prePersist() {
+        this.createdAt = LocalDateTime.now();
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    @PreUpdate
+    protected void preUpdate() {
+        this.updatedAt = LocalDateTime.now();
+    }
 }

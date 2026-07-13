@@ -1,4 +1,4 @@
-spring:
+﻿spring:
   application:
     name: ledger-service
     thread-pool:
@@ -44,17 +44,6 @@ spring:
     validate-on-migrate: true
     out-of-order: true
     enabled: true
-  mail:
-    host: ${SPRING_MAIL_HOST:smtp.gmail.com}
-    port: ${SPRING_MAIL_PORT:587}
-    username: ${SPRING_MAIL_USERNAME:truongducbao290402@gmail.com}
-    password: ${SPRING_MAIL_PASSWORD:tfcr josj npro npsy}
-    properties:
-      mail:
-        smtp:
-          auth: ${SPRING_MAIL_SMTP_AUTH:true}
-          starttls:
-            enable: ${SPRING_MAIL_SMTP_STARTTLS:true}
 redisson:
   host: ${REDIS_HOST:localhost}
   port: ${REDIS_PORT:6378}
@@ -62,7 +51,7 @@ redisson:
   database: 0
   timeout: 3000
 server:
-  port: 8091
+  port: 8092
 
 i18n:
   default-locale: vi-VN
@@ -107,3 +96,4 @@ app-setting:
   urlLogin:
   seedDataSystemParam:
   tempDirectory:
+

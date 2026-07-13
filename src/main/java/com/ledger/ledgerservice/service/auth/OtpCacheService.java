@@ -13,6 +13,7 @@ import java.util.concurrent.TimeUnit;
 public class OtpCacheService {
     private static final Duration OTP_TTL = Duration.ofMinutes(5);
     private static final Duration LOCK_TTL = Duration.ofMinutes(15);
+    private static final Duration RESEND_TTL = Duration.ofMinutes(1);
     private static final int MAX_ATTEMPTS = 5;
 
     private final RedissonClient redissonClient;
@@ -25,6 +26,11 @@ public class OtpCacheService {
         redissonClient.<String>getBucket(getOtpKey(username)).set(otpCode, OTP_TTL);
         redissonClient.getAtomicLong(getAttemptKey(username)).delete();
         redissonClient.getBucket(getLockKey(username)).delete();
+        redissonClient.getBucket(getResendKey(username)).set(Boolean.TRUE, RESEND_TTL);
+    }
+
+    public boolean isResendCoolingDown(String username) {
+        return redissonClient.getBucket(getResendKey(username)).isExists();
     }
 
     public boolean isLocked(String username) {
@@ -80,6 +86,10 @@ public class OtpCacheService {
 
     private String getLockKey(String username) {
         return "auth:otp:lock:" + normalize(username);
+    }
+
+    private String getResendKey(String username) {
+        return "auth:otp:resend:" + normalize(username);
     }
 
     private String normalize(String username) {
