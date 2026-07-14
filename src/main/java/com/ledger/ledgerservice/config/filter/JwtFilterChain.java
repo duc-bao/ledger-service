@@ -2,10 +2,10 @@ package com.ledger.ledgerservice.config.filter;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ledger.ledgerservice.config.properties.JwtProperties;
+import com.ledger.ledgerservice.model.constant.HeaderConstant;
 import com.ledger.ledgerservice.model.context.RequestContext;
 import com.ledger.ledgerservice.model.context.holder.RequestContextHolder;
 import com.ledger.ledgerservice.model.dto.response.BaseResponse;
-import com.ledger.ledgerservice.model.constant.HeaderConstant;
 import com.ledger.ledgerservice.model.enums.MessageCode;
 import com.ledger.ledgerservice.model.security.JwtUserPrincipal;
 import com.ledger.ledgerservice.service.auth.TokenBlacklistService;
@@ -18,8 +18,8 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.MediaType;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
@@ -29,17 +29,15 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
-import java.util.*;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 @Component
 @RequiredArgsConstructor
 @Slf4j
 public class JwtFilterChain extends OncePerRequestFilter {
     private static final AntPathMatcher PATH_MATCHER = new AntPathMatcher();
-    private final MessageHelper messageHelper;
-    private final JwtProperties jwtProperties;
-    private final ObjectMapper objectMapper;
-    private final TokenBlacklistService tokenBlacklistService;
     private static final Set<String> EXCLUDED_PATHS = Set.of(
             "/actuator/health",
             "/error",
@@ -48,6 +46,11 @@ public class JwtFilterChain extends OncePerRequestFilter {
             "/swagger-ui/**",
             "/swagger-ui.html"
     );
+
+    private final MessageHelper messageHelper;
+    private final JwtProperties jwtProperties;
+    private final ObjectMapper objectMapper;
+    private final TokenBlacklistService tokenBlacklistService;
 
     @Override
     protected void doFilterInternal(@NonNull HttpServletRequest request, @NonNull HttpServletResponse response, @NonNull FilterChain filterChain) throws ServletException, IOException {
@@ -81,14 +84,14 @@ public class JwtFilterChain extends OncePerRequestFilter {
 
             String userId = resolveUserId(claims);
             JwtUserPrincipal principal = new JwtUserPrincipal(userId, username);
-            UsernamePasswordAuthenticationToken authenticationToken =
-                    new UsernamePasswordAuthenticationToken(principal, null, List.of());
+            UsernamePasswordAuthenticationToken authenticationToken = new UsernamePasswordAuthenticationToken(principal, null, List.of());
             authenticationToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
             SecurityContextHolder.getContext().setAuthentication(authenticationToken);
 
             RequestContext context = RequestContextHolder.get();
             if (context != null) {
                 context.setUsername(username);
+                context.setUserId(userId);
             }
 
             filterChain.doFilter(request, response);
@@ -141,13 +144,7 @@ public class JwtFilterChain extends OncePerRequestFilter {
     private void unauthorized(HttpServletResponse response, MessageCode code) throws IOException {
         HttpStatus status = code == MessageCode.SERVICE_UNAVAILABLE ? HttpStatus.SERVICE_UNAVAILABLE : HttpStatus.UNAUTHORIZED;
         String requestId = RequestContextHolder.getRequestId();
-        BaseResponse<Object> body = BaseResponse.error(
-                requestId,
-                messageHelper.getMsg(code.getKey()),
-                code.getCode(),
-                status.value()
-        );
-
+        BaseResponse<Object> body = BaseResponse.error(requestId, messageHelper.getMsg(code.getKey()), code.getCode(), status.value());
         response.setStatus(status.value());
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
         response.setCharacterEncoding("UTF-8");
