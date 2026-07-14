@@ -1,12 +1,15 @@
 package com.ledger.ledgerservice.model.entity;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.ledger.ledgerservice.model.enums.RecordStatus;
+import lombok.Builder;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.Index;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
-import lombok.Builder;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -20,7 +23,8 @@ import java.time.LocalDateTime;
         indexes = {
                 @Index(columnList = "department_id"),
                 @Index(columnList = "user_id"),
-                @Index(columnList = "is_primary")
+                @Index(columnList = "is_primary"),
+                @Index(columnList = "status")
         })
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @Getter
@@ -49,4 +53,10 @@ public class DepartmentUserEntity extends EntityBase {
 
     @Column(name = "left_date")
     private LocalDateTime leftDate;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false, length = 20)
+    @Builder.Default
+    private RecordStatus status = RecordStatus.ACTIVE;
 }
+

@@ -9,6 +9,7 @@ import com.ledger.ledgerservice.model.entity.Group;
 import com.ledger.ledgerservice.model.entity.User;
 import com.ledger.ledgerservice.model.entity.UserGroup;
 import com.ledger.ledgerservice.model.enums.MessageCode;
+import com.ledger.ledgerservice.model.enums.RecordStatus;
 import com.ledger.ledgerservice.model.enums.UserStatus;
 import com.ledger.ledgerservice.repository.GroupRepository;
 import com.ledger.ledgerservice.repository.UserGroupRepository;
@@ -24,6 +25,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -76,7 +78,10 @@ public class UserAdminServiceImpl implements UserAdminService {
     public AdminUserDetailResponse getUserDetail(String userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new BusinessException(MessageCode.USER_NOT_FOUND, HttpStatus.NOT_FOUND));
-        UserGroup userGroup = userGroupRepository.findByUserId(userId).stream().findFirst().orElse(null);
+        UserGroup userGroup = userGroupRepository.findActiveByUserIdAt(userId, RecordStatus.ACTIVE, LocalDateTime.now())
+                .stream()
+                .findFirst()
+                .orElse(null);
         Group group = userGroup == null ? null : groupRepository.findById(userGroup.getGroupId()).orElse(null);
 
         return AdminUserDetailResponse.builder()
@@ -125,6 +130,7 @@ public class UserAdminServiceImpl implements UserAdminService {
         }
 
         user.setStatus(UserStatus.ACTIVE);
+        user.setLockedUntil(null);
         touchAudit(user);
         userRepository.save(user);
     }
@@ -134,8 +140,11 @@ public class UserAdminServiceImpl implements UserAdminService {
         if (userIds.isEmpty()) {
             return Map.of();
         }
-        return userGroupRepository.findByUserIdIn(userIds).stream()
-                .collect(Collectors.toMap(UserGroup::getUserId, Function.identity(), (left, right) -> left));
+        Map<String, UserGroup> result = new LinkedHashMap<>();
+        for (UserGroup userGroup : userGroupRepository.findActiveByUserIdInAt(userIds, RecordStatus.ACTIVE, LocalDateTime.now())) {
+            result.putIfAbsent(userGroup.getUserId(), userGroup);
+        }
+        return result;
     }
 
     private Map<String, Group> mapGroups(Set<String> groupIds) {
@@ -180,13 +189,6 @@ public class UserAdminServiceImpl implements UserAdminService {
         if (StringUtils.hasText(actor) && actor.equalsIgnoreCase(targetUser.getUsername())) {
             throw new BusinessException(MessageCode.BAD_REQUEST, HttpStatus.BAD_REQUEST);
         }
-    }
-
-    private String normalize(String value) {
-        if (!StringUtils.hasText(value)) {
-            return null;
-        }
-        return value.trim();
     }
 
     private String normalizeKeyword(String value) {

@@ -51,7 +51,7 @@ redisson:
   database: 0
   timeout: 3000
 server:
-  port: 8092
+  port: 8091
 
 i18n:
   default-locale: vi-VN

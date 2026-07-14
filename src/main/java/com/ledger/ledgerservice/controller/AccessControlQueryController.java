@@ -19,20 +19,19 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/v1/access-control")
 @RequiredArgsConstructor
-@Tag(name = "Access Control Query", description = "APIs for querying permissions and menus of the current user")
+@Tag(name = "Access Control Query", description = "APIs for querying authorized menus of the current user")
 public class AccessControlQueryController {
-
     private final AccessControlQueryService accessControlQueryService;
     private final ResponseHelper responseHelper;
 
     @GetMapping("/me/menus")
-    @Operation(summary = "Get authorized menus", description = "Return menus that the current user is authorized to access", security = @SecurityRequirement(name = "bearerAuth"))
-    @ApiResponses(value = {
+    @Operation(summary = "Get authorized menus", description = "Return the RBAC-authorized menu tree of the current user", security = @SecurityRequirement(name = "bearerAuth"))
+    @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Authorized menu list retrieved successfully"),
-            @ApiResponse(responseCode = "401", description = "Unauthorized")
+            @ApiResponse(responseCode = "401", description = "Unauthorized"),
+            @ApiResponse(responseCode = "403", description = "Forbidden")
     })
     public ResponseEntity<BaseResponse<AuthorizedMenuListResponse>> getMyAuthorizedMenus() {
-        AuthorizedMenuListResponse response = accessControlQueryService.getAuthorizedMenus();
-        return responseHelper.ok(MessageCode.SUCCESS, response);
+        return responseHelper.ok(MessageCode.SUCCESS, accessControlQueryService.getAuthorizedMenus());
     }
 }

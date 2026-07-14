@@ -47,6 +47,22 @@ public enum MessageCode {
     MENU_NOT_FOUND("MENU_NOT_FOUND", "error.access.menuNotFound"),
     USER_ID_REQUIRED("INPUT_INVALID", "error.access.userIdRequired"),
     GROUP_ID_REQUIRED("INPUT_INVALID", "error.access.groupIdRequired"),
+    PERMISSION_NOT_FOUND("PERMISSION_NOT_FOUND", "error.access.permissionNotFound"),
+    PERMISSION_CODE_EXISTS("EXISTED", "error.access.permissionCodeExists"),
+    PERMISSION_IN_USE("CONFLICT", "error.access.permissionInUse"),
+    ROLE_PERMISSION_NOT_FOUND("ROLE_PERMISSION_NOT_FOUND", "error.access.rolePermissionNotFound"),
+    ROLE_PERMISSION_EXISTS("EXISTED", "error.access.rolePermissionExists"),
+    PERMISSION_API_NOT_FOUND("PERMISSION_API_NOT_FOUND", "error.access.permissionApiNotFound"),
+    PERMISSION_API_EXISTS("EXISTED", "error.access.permissionApiExists"),
+    DEPARTMENT_USER_ROLE_NOT_FOUND("DEPARTMENT_USER_ROLE_NOT_FOUND", "error.access.departmentUserRoleNotFound"),
+    DEPARTMENT_USER_ROLE_EXISTS("EXISTED", "error.access.departmentUserRoleExists"),
+    MENU_PERMISSION_NOT_FOUND("MENU_PERMISSION_NOT_FOUND", "error.access.menuPermissionNotFound"),
+    MENU_PERMISSION_EXISTS("EXISTED", "error.access.menuPermissionExists"),
+    DEPARTMENT_USER_NOT_FOUND("DEPARTMENT_USER_NOT_FOUND", "error.department.userNotFound"),
+    ROLE_SCOPE_INVALID("INVALID", "error.access.roleScopeInvalid"),
+    PERMISSION_STATUS_INVALID("INVALID", "error.access.permissionStatusInvalid"),
+    EFFECTIVE_TIME_RANGE_INVALID("INVALID", "error.access.effectiveTimeRangeInvalid"),
+    ACCESS_DENIED("FORBIDDEN", "error.http.forbidden"),
     OTP_SENT("OTP_SENT", "success.otpSent"),
     USER_PROFILE_FETCHED("SUCCESS", "success.user.profileFetched"),
     USER_PROFILE_UPDATED("SUCCESS", "success.user.profileUpdated"),
@@ -74,6 +90,7 @@ public enum MessageCode {
     EMAIL_GATEWAY_NOT_CONFIGURED("INVALID", "email.gateway.notfound"),
     EMAIL_GATEWAY_SUCCESS("SUCESS", "email.gateway.success"),
     EMAIL_GATEWAY_EXISTS("EXISTED", "email.gateway.exists"),
+
     // ===== HTTP STATUS =====
     BAD_REQUEST("BAD_REQUEST", "error.http.badRequest"),
     UNAUTHORIZED("UNAUTHORIZED", "error.http.unauthorized"),
@@ -94,5 +111,4 @@ public enum MessageCode {
     public static MessageCode get(String name) {
         return EnumUtils.getEnum(MessageCode.class, name);
     }
-
 }

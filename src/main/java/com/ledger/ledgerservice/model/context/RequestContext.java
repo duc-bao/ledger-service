@@ -1,6 +1,10 @@
 package com.ledger.ledgerservice.model.context;
 
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 import java.time.LocalDateTime;
 
@@ -10,7 +14,6 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 public class RequestContext {
-
     @Builder.Default
     private Boolean execute = false;
     private String requestId;
@@ -21,6 +24,7 @@ public class RequestContext {
     private String requestQuery;
     private String requestUrlPath;
     private String userAgent;
+    private String userId;
     private String username;
     private LocalDateTime requestStart;
     private LocalDateTime requestEnd;
@@ -30,5 +34,4 @@ public class RequestContext {
     private Long durationMs;
     private String service;
     private String action;
-
 }
