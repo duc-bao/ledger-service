@@ -1,0 +1,15 @@
+[mcp_servers.ledger-postgres]
+command = "npx"
+args = [
+  "-y",
+  "@bytebase/dbhub@latest",
+  "--transport",
+  "stdio",
+  "--dsn",
+  "postgres://ledger_user:ledger_pass@localhost:5433/ledger_db?sslmode=disable"
+]
+startup_timeout_sec = 30
+tool_timeout_sec = 60
+
+[mcp_servers.ledger-postgres.tools.execute_sql]
+approval_mode = "approve"

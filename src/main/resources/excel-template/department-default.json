@@ -1,0 +1,15 @@
+{
+  "sheetName": "Departments",
+  "title": "DEPARTMENT EXPORT REPORT",
+  "titleRowIndex": 0,
+  "headerRowIndex": 2,
+  "columns": [
+    { "header": "Department Code", "field": "code", "width": 20 },
+    { "header": "Department Name", "field": "name", "width": 30 },
+    { "header": "Short Name", "field": "shortName", "width": 20 },
+    { "header": "Parent ID", "field": "parentId", "width": 36 },
+    { "header": "Status", "field": "status", "width": 12 },
+    { "header": "Is Active", "field": "isActive", "width": 10 },
+    { "header": "Created At", "field": "createdAt", "width": 20 }
+  ]
+}

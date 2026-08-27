@@ -130,10 +130,10 @@ public interface PermissionRepository extends JpaRepository<Permission, String>,
             JOIN RolePermission rp ON rp.groupId = g.id
             JOIN Permission p ON p.id = rp.permissionId
             WHERE ug.userId = :userId
-              AND ug.status = com.ledger.ledgerservice.model.enums.RecordStatus.ACTIVE
-              AND g.status = com.ledger.ledgerservice.model.enums.RecordStatus.ACTIVE
-              AND rp.status = com.ledger.ledgerservice.model.enums.RecordStatus.ACTIVE
-              AND p.status = com.ledger.ledgerservice.model.enums.RecordStatus.ACTIVE
+              AND ug.status = RecordStatus.ACTIVE
+              AND g.status = RecordStatus.ACTIVE
+              AND rp.status = RecordStatus.ACTIVE
+              AND p.status = RecordStatus.ACTIVE
               AND p.id IN :permissionIds
             """)
     boolean existsAnyActiveGlobalPermission(@Param("userId") String userId,

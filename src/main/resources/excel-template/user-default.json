@@ -1,0 +1,15 @@
+{
+  "sheetName": "Users",
+  "title": "USER EXPORT REPORT",
+  "titleRowIndex": 0,
+  "headerRowIndex": 2,
+  "columns": [
+    { "header": "Username", "field": "username", "width": 20 },
+    { "header": "Full Name", "field": "fullName", "width": 25 },
+    { "header": "Email", "field": "email", "width": 30 },
+    { "header": "Phone", "field": "phone", "width": 15 },
+    { "header": "User Type", "field": "userType", "width": 15 },
+    { "header": "Status", "field": "status", "width": 12 },
+    { "header": "Created At", "field": "createdAt", "width": 20 }
+  ]
+}

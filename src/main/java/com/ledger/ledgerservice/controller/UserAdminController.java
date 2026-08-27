@@ -1,7 +1,10 @@
 package com.ledger.ledgerservice.controller;
 
 import com.ledger.ledgerservice.model.dto.request.AdminUserSearchRequest;
-import com.ledger.ledgerservice.model.dto.response.*;
+import com.ledger.ledgerservice.model.dto.response.AdminUserDetailResponse;
+import com.ledger.ledgerservice.model.dto.response.AdminUserItemResponse;
+import com.ledger.ledgerservice.model.dto.response.BaseResponse;
+import com.ledger.ledgerservice.model.dto.response.MetaDataResp;
 import com.ledger.ledgerservice.model.enums.MessageCode;
 import com.ledger.ledgerservice.service.user.UserAdminService;
 import com.ledger.ledgerservice.util.ResponseHelper;
@@ -13,7 +16,14 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
@@ -52,6 +62,13 @@ public class UserAdminController {
     @Operation(summary = "Unlock user account")
     public ResponseEntity<BaseResponse<Object>> unlockUser(@PathVariable String userId) {
         userAdminService.unlockUser(userId);
+        return responseHelper.ok(MessageCode.SUCCESS, null, HttpStatus.OK);
+    }
+
+    @DeleteMapping("/{userId}")
+    @Operation(summary = "Delete user account")
+    public ResponseEntity<BaseResponse<Object>> deleteUser(@PathVariable String userId) {
+        userAdminService.deleteUser(userId);
         return responseHelper.ok(MessageCode.SUCCESS, null, HttpStatus.OK);
     }
 }

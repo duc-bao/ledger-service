@@ -15,9 +15,9 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.jspecify.annotations.NonNull;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
-import org.springframework.security.access.PermissionEvaluator;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
 import org.springframework.util.AntPathMatcher;
@@ -25,13 +25,12 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
-import java.io.Serializable;
 import java.util.Set;
 
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class PermissionFilter extends OncePerRequestFilter implements PermissionEvaluator {
+public class PermissionFilter extends OncePerRequestFilter {
     private static final AntPathMatcher PATH_MATCHER = new AntPathMatcher();
     private static final Set<String> EXCLUDED_PATHS = Set.of(
             "/actuator/health",
@@ -48,31 +47,7 @@ public class PermissionFilter extends OncePerRequestFilter implements Permission
     private final MessageHelper messageHelper;
 
     @Override
-    public boolean hasPermission(Authentication authentication, Object targetDomainObject, Object permission) {
-        if (authentication == null || permission == null) {
-            return false;
-        }
-        String userId = resolveUserId(authentication);
-        if (!StringUtils.hasText(userId)) {
-            return false;
-        }
-        return permissionResolutionService.hasPermission(userId, String.valueOf(permission), null);
-    }
-
-    @Override
-    public boolean hasPermission(Authentication authentication, Serializable targetId, String targetType, Object permission) {
-        if (authentication == null || permission == null) {
-            return false;
-        }
-        String userId = resolveUserId(authentication);
-        if (!StringUtils.hasText(userId)) {
-            return false;
-        }
-        return permissionResolutionService.hasPermission(userId, String.valueOf(permission), targetType);
-    }
-
-    @Override
-    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
+    protected void doFilterInternal(@NonNull HttpServletRequest request, @NonNull HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
         RequestContext ctx = RequestContextHolder.get();
         if (ctx != null && StringUtils.hasText(ctx.getUsername()) && ctx.getUsername().equalsIgnoreCase(appSettingProperty.getSuperUser())) {
             filterChain.doFilter(request, response);
@@ -99,9 +74,9 @@ public class PermissionFilter extends OncePerRequestFilter implements Permission
 
         boolean allowed;
         try {
-            allowed = permissionResolutionService.hasApiPermission(userId, request.getMethod(), buildRequestUri(request));
+            allowed = permissionResolutionService.hasApiPermission(userId, request.getMethod(), normalizeRequestUri(request));
         } catch (Exception ex) {
-            log.error("Permission check failed for {} {}", request.getMethod(), request.getRequestURI(), ex);
+            log.error("Permission check failed for userId={}, method= {}, requestURI={}", userId, request.getMethod(), request.getRequestURI(), ex);
             forbidden(response, MessageCode.ACCESS_DENIED);
             return;
         }
@@ -116,16 +91,33 @@ public class PermissionFilter extends OncePerRequestFilter implements Permission
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
-        return "OPTIONS".equalsIgnoreCase(request.getMethod())
-                || EXCLUDED_PATHS.stream().anyMatch(path -> PATH_MATCHER.match(path, request.getRequestURI()));
+        if ("OPTIONS".equalsIgnoreCase(request.getMethod())) {
+            return true;
+        }
+        String requestUri = normalizeRequestUri(request);
+
+        return EXCLUDED_PATHS.stream()
+                .anyMatch(pattern -> PATH_MATCHER.match(pattern, requestUri));
     }
 
-    private String buildRequestUri(HttpServletRequest request) {
-        String uri = request.getRequestURI();
-        if (StringUtils.hasText(request.getQueryString())) {
-            uri = uri + "?" + request.getQueryString();
+    private String normalizeRequestUri(HttpServletRequest request) {
+        String contextPath = request.getContextPath();
+        String requestUri = request.getRequestURI();
+
+        if (StringUtils.hasText(contextPath)
+                && requestUri.startsWith(contextPath)) {
+            requestUri = requestUri.substring(contextPath.length());
         }
-        return uri;
+
+        if (!StringUtils.hasText(requestUri)) {
+            return "/";
+        }
+
+        if (requestUri.length() > 1 && requestUri.endsWith("/")) {
+            requestUri = requestUri.substring(0, requestUri.length() - 1);
+        }
+
+        return requestUri;
     }
 
     private String resolveUserId(Authentication authentication) {

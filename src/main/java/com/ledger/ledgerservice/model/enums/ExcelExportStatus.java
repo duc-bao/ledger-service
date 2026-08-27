@@ -4,5 +4,7 @@ public enum ExcelExportStatus {
     PENDING,
     PROCESSING,
     COMPLETED,
-    FAILED
+    FAILED,
+    CANCELLED,
+    EXPIRED
 }

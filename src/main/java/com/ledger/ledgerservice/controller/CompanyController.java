@@ -1,11 +1,14 @@
 package com.ledger.ledgerservice.controller;
 
+import com.ledger.ledgerservice.model.dto.request.company.AssignCompanyDepartmentsRequest;
 import com.ledger.ledgerservice.model.dto.request.company.CreateCompanyRequest;
 import com.ledger.ledgerservice.model.dto.request.company.SearchCompany;
 import com.ledger.ledgerservice.model.dto.response.BaseResponse;
+import com.ledger.ledgerservice.model.dto.response.company.CompanyDepartmentAssignmentResponse;
 import com.ledger.ledgerservice.model.dto.response.company.CompanyResponse;
 import com.ledger.ledgerservice.model.dto.response.company.CompanyTreeResponse;
 import com.ledger.ledgerservice.model.enums.MessageCode;
+import com.ledger.ledgerservice.service.company.CompanyDepartmentService;
 import com.ledger.ledgerservice.service.company.CompanyService;
 import com.ledger.ledgerservice.util.ResponseHelper;
 import io.swagger.v3.oas.annotations.Operation;
@@ -32,6 +35,7 @@ import java.util.List;
 @SecurityRequirement(name = "bearerAuth")
 public class CompanyController {
     private final CompanyService companyService;
+    private final CompanyDepartmentService companyDepartmentService;
     private final ResponseHelper responseHelper;
 
     @PostMapping
@@ -67,6 +71,14 @@ public class CompanyController {
     public ResponseEntity<BaseResponse<CompanyResponse>> updateCompany(@PathVariable String companyId,
                                                                        @Valid @RequestBody CreateCompanyRequest request) {
         CompanyResponse data = companyService.updateCompany(companyId, request);
+        return responseHelper.ok(MessageCode.SUCCESS, data, HttpStatus.OK);
+    }
+
+    @PutMapping("/{companyId}/departments")
+    @Operation(summary = "Assign departments to company")
+    public ResponseEntity<BaseResponse<CompanyDepartmentAssignmentResponse>> assignDepartments(@PathVariable String companyId,
+                                                                                                @Valid @RequestBody AssignCompanyDepartmentsRequest request) {
+        CompanyDepartmentAssignmentResponse data = companyDepartmentService.assignDepartments(companyId, request);
         return responseHelper.ok(MessageCode.SUCCESS, data, HttpStatus.OK);
     }
 }

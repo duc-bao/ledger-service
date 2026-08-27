@@ -8,7 +8,12 @@ import java.util.List;
 
 public interface MenuPermissionService {
     MenuPermissionResponse assign(MenuPermissionCreateRequest request);
+
     void revoke(String menuPermissionId);
+
     List<MenuPermissionResponse> getByMenu(String menuId);
+
     List<AuthorizedMenuResponse> getAuthorizedMenus(String userId);
+
+    List<AuthorizedMenuResponse> getAuthorizedMenusForCurrentUser();
 }

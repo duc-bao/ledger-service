@@ -13,4 +13,6 @@ public interface UserAdminService {
     void lockUser(String userId);
 
     void unlockUser(String userId);
+
+    void deleteUser(String userId);
 }

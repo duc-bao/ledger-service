@@ -10,10 +10,16 @@ import org.springframework.data.domain.Pageable;
 
 public interface PermissionService {
     PermissionResponse create(PermissionCreateRequest request);
+
     PermissionResponse update(String permissionId, PermissionUpdateRequest request);
+
     PermissionResponse getById(String permissionId);
+
     PermissionResponse getByCode(String code);
+
     PageResponse<PermissionResponse> search(PermissionSearchRequest request, Pageable pageable);
+
     void delete(String permissionId);
+
     void changeStatus(String permissionId, RecordStatus status);
 }
