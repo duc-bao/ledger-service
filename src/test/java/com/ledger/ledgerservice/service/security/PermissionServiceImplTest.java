@@ -13,6 +13,8 @@ import com.ledger.ledgerservice.repository.MenuPermissionRepository;
 import com.ledger.ledgerservice.repository.PermissionApiRepository;
 import com.ledger.ledgerservice.repository.PermissionRepository;
 import com.ledger.ledgerservice.repository.RolePermissionRepository;
+import com.ledger.ledgerservice.model.entity.MenuPermission;
+import com.ledger.ledgerservice.repository.MenuRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -27,6 +29,7 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
@@ -42,6 +45,8 @@ class PermissionServiceImplTest {
     private PermissionApiRepository permissionApiRepository;
     @Mock
     private MenuPermissionRepository menuPermissionRepository;
+    @Mock
+    private MenuRepository menuRepository;
     @Mock
     private PermissionMapper permissionMapper;
 
@@ -84,6 +89,61 @@ class PermissionServiceImplTest {
         assertEquals("USER_MANAGEMENT", captor.getValue().getModuleCode());
         assertEquals("CREATE", captor.getValue().getActionCode());
         assertEquals(RecordStatus.ACTIVE, captor.getValue().getStatus());
+    }
+
+    @Test
+    void createSuccessWithoutModuleAndActionCodeAndAutoAssignsMenu() {
+        PermissionCreateRequest request = PermissionCreateRequest.builder()
+                .code("REPORT_EXPORT")
+                .name("Export report")
+                .menuId("menu-123")
+                .displayAction("Xuất file")
+                .build();
+        Permission entity = Permission.builder().build();
+        Permission saved = Permission.builder()
+                .id("perm-export")
+                .code("REPORT_EXPORT")
+                .name("Export report")
+                .status(RecordStatus.ACTIVE)
+                .build();
+        PermissionResponse response = PermissionResponse.builder().id("perm-export").code("REPORT_EXPORT").build();
+
+        when(permissionRepository.existsByCodeIgnoreCase("REPORT_EXPORT")).thenReturn(false);
+        when(menuRepository.existsById("menu-123")).thenReturn(true);
+        when(permissionMapper.toEntity(request)).thenReturn(entity);
+        when(permissionRepository.save(any(Permission.class))).thenReturn(saved);
+        when(menuPermissionRepository.existsByMenuIdAndPermissionId("menu-123", "perm-export")).thenReturn(false);
+        when(permissionMapper.toResponse(saved)).thenReturn(response);
+
+        PermissionResponse actual = permissionService.create(request);
+
+        assertEquals("perm-export", actual.getId());
+        ArgumentCaptor<Permission> permCaptor = ArgumentCaptor.forClass(Permission.class);
+        verify(permissionRepository).save(permCaptor.capture());
+        assertNull(permCaptor.getValue().getModuleCode());
+        assertNull(permCaptor.getValue().getActionCode());
+
+        ArgumentCaptor<MenuPermission> menuPermCaptor = ArgumentCaptor.forClass(MenuPermission.class);
+        verify(menuPermissionRepository).save(menuPermCaptor.capture());
+        assertEquals("menu-123", menuPermCaptor.getValue().getMenuId());
+        assertEquals("perm-export", menuPermCaptor.getValue().getPermissionId());
+        assertEquals("Xuất file", menuPermCaptor.getValue().getDisplayAction());
+    }
+
+    @Test
+    void createThrowsWhenMenuNotFound() {
+        PermissionCreateRequest request = PermissionCreateRequest.builder()
+                .code("REPORT_EXPORT")
+                .name("Export report")
+                .menuId("missing-menu")
+                .build();
+
+        when(permissionRepository.existsByCodeIgnoreCase("REPORT_EXPORT")).thenReturn(false);
+        when(menuRepository.existsById("missing-menu")).thenReturn(false);
+
+        BusinessException exception = assertThrows(BusinessException.class, () -> permissionService.create(request));
+        assertEquals(MessageCode.MENU_NOT_FOUND.getCode(), exception.getCode());
+        assertEquals(HttpStatus.NOT_FOUND, exception.getStatusCode());
     }
 
     @Test

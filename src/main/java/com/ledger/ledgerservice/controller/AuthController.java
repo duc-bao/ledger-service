@@ -38,9 +38,10 @@ public class AuthController {
             @ApiResponse(responseCode = "200", description = "OTP sent successfully"),
             @ApiResponse(responseCode = "400", description = "Invalid input data")
     })
-    public ResponseEntity<BaseResponse<Object>> requestOtp(@Valid @RequestBody LoginRequestOtpRequest request) {
-        authService.requestLoginOtp(request);
-        return responseHelper.ok(MessageCode.OTP_SENT, null, HttpStatus.OK);
+    public ResponseEntity<BaseResponse<LoginTokenResponse>> requestOtp(@Valid @RequestBody LoginRequestOtpRequest request) {
+        LoginTokenResponse data = authService.requestLoginOtp(request);
+        MessageCode code = data.isTwoFactorRequired() ? MessageCode.OTP_SENT : MessageCode.SUCCESS;
+        return responseHelper.ok(code, data, HttpStatus.OK);
     }
 
     @PostMapping("/verify-otp")

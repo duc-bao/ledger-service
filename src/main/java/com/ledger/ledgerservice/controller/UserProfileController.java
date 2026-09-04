@@ -1,6 +1,7 @@
 package com.ledger.ledgerservice.controller;
 
 import com.ledger.ledgerservice.model.dto.request.ChangePasswordRequest;
+import com.ledger.ledgerservice.model.dto.request.UpdateTwoFactorRequest;
 import com.ledger.ledgerservice.model.dto.request.UpdateMyProfileRequest;
 import com.ledger.ledgerservice.model.dto.response.BaseResponse;
 import com.ledger.ledgerservice.model.dto.response.UserProfileResponse;
@@ -44,5 +45,12 @@ public class UserProfileController {
     public ResponseEntity<BaseResponse<Object>> changeMyPassword(@Valid @RequestBody ChangePasswordRequest request) {
         userProfileService.changeMyPassword(request);
         return responseHelper.ok(MessageCode.PASSWORD_CHANGED, null, HttpStatus.OK);
+    }
+
+    @PutMapping("/two-factor")
+    @Operation(summary = "Enable or disable my two-factor login")
+    public ResponseEntity<BaseResponse<UserProfileResponse>> updateTwoFactor(@Valid @RequestBody UpdateTwoFactorRequest request) {
+        UserProfileResponse data = userProfileService.updateTwoFactor(request);
+        return responseHelper.ok(MessageCode.USER_PROFILE_UPDATED, data, HttpStatus.OK);
     }
 }

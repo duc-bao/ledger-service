@@ -12,6 +12,7 @@ import com.ledger.ledgerservice.model.enums.MenuType;
 import com.ledger.ledgerservice.model.enums.MessageCode;
 import com.ledger.ledgerservice.model.enums.RecordStatus;
 import com.ledger.ledgerservice.model.mapper.MenuPermissionMapper;
+import com.ledger.ledgerservice.model.security.JwtUserPrincipal;
 import com.ledger.ledgerservice.repository.DepartmentUserRepository;
 import com.ledger.ledgerservice.repository.MenuPermissionRepository;
 import com.ledger.ledgerservice.repository.MenuRepository;
@@ -19,6 +20,8 @@ import com.ledger.ledgerservice.repository.PermissionRepository;
 import com.ledger.ledgerservice.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -82,6 +85,16 @@ public class MenuPermissionServiceImpl implements MenuPermissionService {
         Map<String, Permission> permissionById = permissionRepository.findAllByIdIn(mappings.stream().map(MenuPermission::getPermissionId).toList()).stream()
                 .collect(Collectors.toMap(Permission::getId, permission -> permission));
         return mappings.stream().map(mapping -> toResponse(mapping, menu, permissionById.get(mapping.getPermissionId()))).toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<AuthorizedMenuResponse> getAuthorizedMenusForCurrentUser() {
+        String userId = getCurrentUserId();
+        if (!StringUtils.hasText(userId)) {
+            throw new BusinessException(MessageCode.UNAUTHORIZED, HttpStatus.UNAUTHORIZED);
+        }
+        return getAuthorizedMenus(userId);
     }
 
     @Override
@@ -156,6 +169,18 @@ public class MenuPermissionServiceImpl implements MenuPermissionService {
         }
         sortNodes(roots);
         return roots;
+    }
+
+    private String getCurrentUserId() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || authentication.getPrincipal() == null) {
+            return null;
+        }
+        Object principal = authentication.getPrincipal();
+        if (principal instanceof JwtUserPrincipal jwtUserPrincipal) {
+            return jwtUserPrincipal.userId();
+        }
+        return null;
     }
 
     private void includeParents(Menu menu, Map<String, Menu> allMenusById, Set<String> includedMenuIds) {

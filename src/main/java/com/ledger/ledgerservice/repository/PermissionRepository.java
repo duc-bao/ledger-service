@@ -56,6 +56,22 @@ public interface PermissionRepository extends JpaRepository<Permission, String>,
                                                      @Param("departmentId") String departmentId);
 
     @Query("""
+            SELECT DISTINCT p FROM Permission p
+            JOIN RolePermission rp ON rp.permissionId = p.id
+            JOIN Group g ON g.id = rp.groupId
+            JOIN CompanyUserRole cur ON cur.groupId = g.id
+            WHERE cur.userId = :userId
+              AND cur.companyId = :companyId
+              AND cur.status = com.ledger.ledgerservice.model.enums.RecordStatus.ACTIVE
+              AND g.status = com.ledger.ledgerservice.model.enums.RecordStatus.ACTIVE
+              AND rp.status = com.ledger.ledgerservice.model.enums.RecordStatus.ACTIVE
+              AND p.status = com.ledger.ledgerservice.model.enums.RecordStatus.ACTIVE
+            ORDER BY p.moduleCode ASC, p.actionCode ASC, p.code ASC
+            """)
+    List<Permission> findActiveCompanyPermissions(@Param("userId") String userId,
+                                                  @Param("companyId") String companyId);
+
+    @Query("""
             SELECT DISTINCT p.code
             FROM UserGroup ug
             JOIN Group g ON g.id = ug.groupId
@@ -86,6 +102,22 @@ public interface PermissionRepository extends JpaRepository<Permission, String>,
             """)
     Set<String> findActiveDepartmentPermissionCodes(@Param("userId") String userId,
                                                     @Param("departmentId") String departmentId);
+
+    @Query("""
+            SELECT DISTINCT p.code
+            FROM CompanyUserRole cur
+            JOIN Group g ON g.id = cur.groupId
+            JOIN RolePermission rp ON rp.groupId = g.id
+            JOIN Permission p ON p.id = rp.permissionId
+            WHERE cur.userId = :userId
+              AND cur.companyId = :companyId
+              AND cur.status = com.ledger.ledgerservice.model.enums.RecordStatus.ACTIVE
+              AND g.status = com.ledger.ledgerservice.model.enums.RecordStatus.ACTIVE
+              AND rp.status = com.ledger.ledgerservice.model.enums.RecordStatus.ACTIVE
+              AND p.status = com.ledger.ledgerservice.model.enums.RecordStatus.ACTIVE
+            """)
+    Set<String> findActiveCompanyPermissionCodes(@Param("userId") String userId,
+                                                 @Param("companyId") String companyId);
 
     @Query("""
             SELECT CASE WHEN COUNT(p.id) > 0 THEN TRUE ELSE FALSE END
@@ -130,10 +162,10 @@ public interface PermissionRepository extends JpaRepository<Permission, String>,
             JOIN RolePermission rp ON rp.groupId = g.id
             JOIN Permission p ON p.id = rp.permissionId
             WHERE ug.userId = :userId
-              AND ug.status = com.ledger.ledgerservice.model.enums.RecordStatus.ACTIVE
-              AND g.status = com.ledger.ledgerservice.model.enums.RecordStatus.ACTIVE
-              AND rp.status = com.ledger.ledgerservice.model.enums.RecordStatus.ACTIVE
-              AND p.status = com.ledger.ledgerservice.model.enums.RecordStatus.ACTIVE
+              AND ug.status = RecordStatus.ACTIVE
+              AND g.status = RecordStatus.ACTIVE
+              AND rp.status = RecordStatus.ACTIVE
+              AND p.status = RecordStatus.ACTIVE
               AND p.id IN :permissionIds
             """)
     boolean existsAnyActiveGlobalPermission(@Param("userId") String userId,
@@ -156,6 +188,22 @@ public interface PermissionRepository extends JpaRepository<Permission, String>,
             """)
     boolean existsAnyActiveDepartmentPermission(@Param("userId") String userId,
                                                 @Param("permissionIds") Collection<String> permissionIds);
+
+    @Query("""
+            SELECT CASE WHEN COUNT(p.id) > 0 THEN TRUE ELSE FALSE END
+            FROM CompanyUserRole cur
+            JOIN Group g ON g.id = cur.groupId
+            JOIN RolePermission rp ON rp.groupId = g.id
+            JOIN Permission p ON p.id = rp.permissionId
+            WHERE cur.userId = :userId
+              AND cur.status = com.ledger.ledgerservice.model.enums.RecordStatus.ACTIVE
+              AND g.status = com.ledger.ledgerservice.model.enums.RecordStatus.ACTIVE
+              AND rp.status = com.ledger.ledgerservice.model.enums.RecordStatus.ACTIVE
+              AND p.status = com.ledger.ledgerservice.model.enums.RecordStatus.ACTIVE
+              AND p.id IN :permissionIds
+            """)
+    boolean existsAnyActiveCompanyPermission(@Param("userId") String userId,
+                                             @Param("permissionIds") Collection<String> permissionIds);
 
     @Query("""
             SELECT p.code

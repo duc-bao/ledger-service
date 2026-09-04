@@ -12,6 +12,8 @@ public class BusinessException extends RuntimeException {
     private final String messageKey;
     private final String paramKey;
     private final HttpStatus statusCode;
+    private final Object data;
+    private final Object[] args;
 
     public BusinessException(MessageCode messageCode) {
         this(messageCode, (String) null, HttpStatus.BAD_REQUEST);
@@ -39,5 +41,17 @@ public class BusinessException extends RuntimeException {
         this.messageKey = messageCode != null ? messageCode.getKey() : null;
         this.paramKey = paramKey;
         this.statusCode = statusCode;
+        this.data = null;
+        this.args = new Object[]{};
+    }
+
+    public BusinessException(MessageCode messageCode, HttpStatus statusCode, Object data, Object... args) {
+        super(messageCode != null ? messageCode.getCode() : null);
+        this.code = messageCode != null ? messageCode.getCode() : null;
+        this.messageKey = messageCode != null ? messageCode.getKey() : null;
+        this.paramKey = null;
+        this.statusCode = statusCode;
+        this.data = data;
+        this.args = args == null ? new Object[]{} : args;
     }
 }

@@ -60,4 +60,16 @@ public class ThreadPoolExecutorConfig {
         executor.initialize();
         return executor;
     }
+
+    @Bean
+    public Executor excelExportExecutor() {
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+        executor.setCorePoolSize(2);
+        executor.setMaxPoolSize(4);
+        executor.setQueueCapacity(50);
+        executor.setThreadNamePrefix("excel-export-");
+        executor.setKeepAliveSeconds(60);
+        executor.initialize();
+        return executor;
+    }
 }

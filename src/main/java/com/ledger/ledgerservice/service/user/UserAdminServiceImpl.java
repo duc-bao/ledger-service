@@ -2,15 +2,20 @@ package com.ledger.ledgerservice.service.user;
 
 import com.ledger.ledgerservice.exception.BusinessException;
 import com.ledger.ledgerservice.model.context.holder.RequestContextHolder;
+import com.ledger.ledgerservice.model.dto.request.AdminUpdateUserRequest;
 import com.ledger.ledgerservice.model.dto.request.AdminUserSearchRequest;
 import com.ledger.ledgerservice.model.dto.response.AdminUserDetailResponse;
 import com.ledger.ledgerservice.model.dto.response.AdminUserItemResponse;
+import com.ledger.ledgerservice.model.entity.DepartmentUserEntity;
+import com.ledger.ledgerservice.model.entity.DepartmentUserRole;
 import com.ledger.ledgerservice.model.entity.Group;
 import com.ledger.ledgerservice.model.entity.User;
 import com.ledger.ledgerservice.model.entity.UserGroup;
 import com.ledger.ledgerservice.model.enums.MessageCode;
 import com.ledger.ledgerservice.model.enums.RecordStatus;
 import com.ledger.ledgerservice.model.enums.UserStatus;
+import com.ledger.ledgerservice.repository.DepartmentUserRepository;
+import com.ledger.ledgerservice.repository.DepartmentUserRoleRepository;
 import com.ledger.ledgerservice.repository.GroupRepository;
 import com.ledger.ledgerservice.repository.UserGroupRepository;
 import com.ledger.ledgerservice.repository.UserRepository;
@@ -43,6 +48,8 @@ public class UserAdminServiceImpl implements UserAdminService {
     private final UserRepository userRepository;
     private final UserGroupRepository userGroupRepository;
     private final GroupRepository groupRepository;
+    private final DepartmentUserRepository departmentUserRepository;
+    private final DepartmentUserRoleRepository departmentUserRoleRepository;
 
     @Override
     @Transactional(readOnly = true)
@@ -92,6 +99,7 @@ public class UserAdminServiceImpl implements UserAdminService {
                 .phone(user.getPhone())
                 .userType(user.getUserType())
                 .requireChange(user.getRequireChange())
+                .twoFactorEnabled(user.getTwoFactorEnabled())
                 .status(user.getStatus())
                 .groupId(group != null ? group.getId() : null)
                 .groupCode(group != null ? group.getCode() : null)
@@ -101,6 +109,46 @@ public class UserAdminServiceImpl implements UserAdminService {
                 .updatedAt(user.getUpdatedAt())
                 .updatedBy(user.getUpdatedBy())
                 .build();
+    }
+
+    @Override
+    @Transactional
+    public AdminUserDetailResponse updateUser(String userId, AdminUpdateUserRequest request) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new BusinessException(MessageCode.USER_NOT_FOUND, HttpStatus.NOT_FOUND));
+        validateNotSuperAdmin(userId);
+
+        String normalizedEmail = normalizeNullable(request.getEmail());
+        if (StringUtils.hasText(normalizedEmail)) {
+            userRepository.findByEmail(normalizedEmail)
+                    .filter(existing -> !existing.getId().equals(userId))
+                    .ifPresent(existing -> {
+                        throw new BusinessException(MessageCode.USER_EMAIL_EXISTS, HttpStatus.CONFLICT);
+                    });
+        }
+
+        String normalizedPhone = normalizeNullable(request.getPhone());
+        if (StringUtils.hasText(normalizedPhone)) {
+            userRepository.findByPhone(normalizedPhone)
+                    .filter(existing -> !existing.getId().equals(userId))
+                    .ifPresent(existing -> {
+                        throw new BusinessException(MessageCode.USER_PHONE_EXISTS, HttpStatus.CONFLICT);
+                    });
+        }
+
+        user.setEmail(normalizedEmail);
+        user.setPhone(normalizedPhone);
+        user.setFullName(normalizeNullable(request.getFullName()));
+        user.setUserType(normalizeNullable(request.getUserType()));
+        if (request.getRequireChange() != null) {
+            user.setRequireChange(request.getRequireChange());
+        }
+        if (request.getTwoFactorEnabled() != null) {
+            user.setTwoFactorEnabled(request.getTwoFactorEnabled());
+        }
+        touchAudit(user);
+        userRepository.save(user);
+        return getUserDetail(userId);
     }
 
     @Override
@@ -135,6 +183,48 @@ public class UserAdminServiceImpl implements UserAdminService {
         userRepository.save(user);
     }
 
+    @Override
+    @Transactional
+    public void deleteUser(String userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new BusinessException(MessageCode.USER_NOT_FOUND, HttpStatus.NOT_FOUND));
+        validateNotSelf(user);
+        validateNotSuperAdmin(userId);
+
+        if (user.getStatus() == UserStatus.INACTIVE) {
+            return;
+        }
+
+        user.setStatus(UserStatus.INACTIVE);
+        user.setLockedUntil(null);
+        touchAudit(user);
+        userRepository.save(user);
+
+        LocalDateTime now = LocalDateTime.now();
+        for (UserGroup userGroup : userGroupRepository.findByUserIdAndStatus(userId, RecordStatus.ACTIVE)) {
+            userGroup.setStatus(RecordStatus.INACTIVE);
+            userGroup.setEffectiveTo(now);
+            userGroupRepository.save(userGroup);
+        }
+
+        List<DepartmentUserEntity> memberships = departmentUserRepository.findByUserIdAndStatus(userId, RecordStatus.ACTIVE);
+        if (!memberships.isEmpty()) {
+            List<String> membershipIds = memberships.stream().map(DepartmentUserEntity::getId).toList();
+            for (DepartmentUserRole role : departmentUserRoleRepository.findByDepartmentUserIdIn(membershipIds)) {
+                role.setStatus(RecordStatus.INACTIVE);
+                role.setEffectiveTo(now);
+                departmentUserRoleRepository.save(role);
+            }
+            for (DepartmentUserEntity membership : memberships) {
+                membership.setStatus(RecordStatus.INACTIVE);
+                membership.setLeftDate(now);
+                membership.setUpdatedAt(now);
+                membership.setUpdatedBy(resolveActor());
+                departmentUserRepository.save(membership);
+            }
+        }
+    }
+
     private Map<String, UserGroup> mapUserGroups(List<User> users) {
         Set<String> userIds = users.stream().map(User::getId).collect(Collectors.toSet());
         if (userIds.isEmpty()) {
@@ -165,6 +255,7 @@ public class UserAdminServiceImpl implements UserAdminService {
                 .phone(user.getPhone())
                 .userType(user.getUserType())
                 .requireChange(user.getRequireChange())
+                .twoFactorEnabled(user.getTwoFactorEnabled())
                 .status(user.getStatus())
                 .groupId(group != null ? group.getId() : null)
                 .groupCode(group != null ? group.getCode() : null)
@@ -191,10 +282,26 @@ public class UserAdminServiceImpl implements UserAdminService {
         }
     }
 
+    private void validateNotSuperAdmin(String userId) {
+        for (UserGroup userGroup : userGroupRepository.findActiveByUserIdAt(userId, RecordStatus.ACTIVE, LocalDateTime.now())) {
+            Group group = groupRepository.findById(userGroup.getGroupId()).orElse(null);
+            if (group != null && Boolean.TRUE.equals(group.getIsSuperAdmin())) {
+                throw new BusinessException(MessageCode.CONFLICT, HttpStatus.CONFLICT);
+            }
+        }
+    }
+
     private String normalizeKeyword(String value) {
         if (!StringUtils.hasText(value)) {
             return "";
         }
         return value.trim().toLowerCase(Locale.ROOT);
+    }
+
+    private String normalizeNullable(String value) {
+        if (!StringUtils.hasText(value)) {
+            return null;
+        }
+        return value.trim();
     }
 }

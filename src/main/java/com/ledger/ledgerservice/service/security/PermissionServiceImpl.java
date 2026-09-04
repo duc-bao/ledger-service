@@ -6,11 +6,13 @@ import com.ledger.ledgerservice.model.dto.request.PermissionSearchRequest;
 import com.ledger.ledgerservice.model.dto.request.PermissionUpdateRequest;
 import com.ledger.ledgerservice.model.dto.response.PageResponse;
 import com.ledger.ledgerservice.model.dto.response.PermissionResponse;
+import com.ledger.ledgerservice.model.entity.MenuPermission;
 import com.ledger.ledgerservice.model.entity.Permission;
 import com.ledger.ledgerservice.model.enums.MessageCode;
 import com.ledger.ledgerservice.model.enums.RecordStatus;
 import com.ledger.ledgerservice.model.mapper.PermissionMapper;
 import com.ledger.ledgerservice.repository.MenuPermissionRepository;
+import com.ledger.ledgerservice.repository.MenuRepository;
 import com.ledger.ledgerservice.repository.PermissionApiRepository;
 import com.ledger.ledgerservice.repository.PermissionRepository;
 import com.ledger.ledgerservice.repository.RolePermissionRepository;
@@ -36,6 +38,7 @@ public class PermissionServiceImpl implements PermissionService {
     private final RolePermissionRepository rolePermissionRepository;
     private final PermissionApiRepository permissionApiRepository;
     private final MenuPermissionRepository menuPermissionRepository;
+    private final MenuRepository menuRepository;
     private final PermissionMapper permissionMapper;
 
     @Override
@@ -46,15 +49,36 @@ public class PermissionServiceImpl implements PermissionService {
             throw new BusinessException(MessageCode.PERMISSION_CODE_EXISTS, HttpStatus.CONFLICT);
         }
 
+        if (StringUtils.hasText(request.getMenuId())) {
+            String menuId = request.getMenuId().trim();
+            if (!menuRepository.existsById(menuId)) {
+                throw new BusinessException(MessageCode.MENU_NOT_FOUND, HttpStatus.NOT_FOUND);
+            }
+        }
+
         Permission permission = permissionMapper.toEntity(request);
         permission.setCode(normalizedCode);
         permission.setName(trimRequired(request.getName(), MessageCode.NAME_INVALID));
-        permission.setModuleCode(normalizeUpper(request.getModuleCode()));
-        permission.setActionCode(normalizeUpper(request.getActionCode()));
+        permission.setModuleCode(normalizeUpperNullable(request.getModuleCode()));
+        permission.setActionCode(normalizeUpperNullable(request.getActionCode()));
         permission.setResourceType(normalizeUpperNullable(request.getResourceType()));
         permission.setDescription(trimNullable(request.getDescription()));
         permission.setStatus(RecordStatus.ACTIVE);
-        return permissionMapper.toResponse(permissionRepository.save(permission));
+        Permission savedPermission = permissionRepository.save(permission);
+
+        if (StringUtils.hasText(request.getMenuId())) {
+            String menuId = request.getMenuId().trim();
+            if (!menuPermissionRepository.existsByMenuIdAndPermissionId(menuId, savedPermission.getId())) {
+                menuPermissionRepository.save(MenuPermission.builder()
+                        .menuId(menuId)
+                        .permissionId(savedPermission.getId())
+                        .displayAction(trimNullable(request.getDisplayAction()))
+                        .status(RecordStatus.ACTIVE)
+                        .build());
+            }
+        }
+
+        return permissionMapper.toResponse(savedPermission);
     }
 
     @Override

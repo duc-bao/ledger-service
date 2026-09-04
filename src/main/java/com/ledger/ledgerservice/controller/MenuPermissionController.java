@@ -96,4 +96,18 @@ public class MenuPermissionController {
     ) {
         return responseHelper.ok(MessageCode.SUCCESS, menuPermissionService.getAuthorizedMenus(userId));
     }
+
+    @GetMapping("/me/authorized-menus")
+    @Operation(summary = "Get current user authorized menus", description = "Resolve frontend menu tree for the currently authenticated user from RBAC permissions only")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Authorized menus loaded"),
+            @ApiResponse(responseCode = "401", description = "Unauthorized"),
+            @ApiResponse(responseCode = "403", description = "Forbidden")
+    })
+    public ResponseEntity<BaseResponse<List<AuthorizedMenuResponse>>> getCurrentUserAuthorizedMenus() {
+        return responseHelper.ok(MessageCode.SUCCESS, menuPermissionService.getAuthorizedMenusForCurrentUser());
+    }
+
 }
+
+

@@ -36,13 +36,16 @@ services:
       dockerfile: Dockerfile
     container_name: ledger-service
     ports:
-      - "8080:8080"
+      - "8080:8091"
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/ledger_db
       SPRING_DATASOURCE_USERNAME: ledger_user
       SPRING_DATASOURCE_PASSWORD: ledger_pass
       SPRING_DATA_REDIS_HOST: redis
       SPRING_DATA_REDIS_PORT: 6379
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      MINIO_ENDPOINT: http://minio:9000
     depends_on:
       postgres:
         condition: service_healthy

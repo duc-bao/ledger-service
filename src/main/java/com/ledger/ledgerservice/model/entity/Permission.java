@@ -36,10 +36,10 @@ public class Permission extends EntityBase {
     @Column(name = "name", length = 200, nullable = false)
     private String name;
 
-    @Column(name = "module_code", length = 50, nullable = false)
+    @Column(name = "module_code", length = 50)
     private String moduleCode;
 
-    @Column(name = "action_code", length = 50, nullable = false)
+    @Column(name = "action_code", length = 50)
     private String actionCode;
 
     @Column(name = "resource_type", length = 50)

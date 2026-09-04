@@ -67,6 +67,10 @@ public class User extends EntityBase {
     @Column(name = "locked_until")
     private LocalDateTime lockedUntil;
 
+    @Column(name = "two_factor_enabled", nullable = false)
+    @Builder.Default
+    private Boolean twoFactorEnabled = Boolean.TRUE;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 20)
     @Builder.Default

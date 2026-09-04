@@ -32,12 +32,14 @@ public enum MessageCode {
     CONFIRM_PASSWORD_NOT_MATCH("INVALID", "error.confirmPassword.notMatch"),
     OTP_NO_ATTEMPTS_LEFT("INVALID", "error.otp.noAttemptsLeft"),
     OTP_INVALID("OTP_INVALID", "error.otp.invalid"),
+    OTP_ATTEMPTS_EXCEEDED("OTP_ATTEMPTS_EXCEEDED", "error.otp.attemptsExceeded"),
     USER_NOT_FOUND("USER_NOT_FOUND", "error.auth.userNotFound"),
     USER_LOCKED("FORBIDDEN", "error.auth.userLocked"),
     USERNAME_EXISTS("EXISTED", "error.auth.usernameExists"),
     USER_EMAIL_EXISTS("EXISTED", "error.auth.userEmailExists"),
     USER_PHONE_EXISTS("EXISTED", "error.auth.userPhoneExists"),
     PASSWORD_INVALID("PASSWORD_INVALID", "error.auth.passwordInvalid"),
+    PASSWORD_ATTEMPTS_EXCEEDED("PASSWORD_ATTEMPTS_EXCEEDED", "error.auth.passwordAttemptsExceeded"),
     USER_EMAIL_REQUIRED("USER_EMAIL_REQUIRED", "error.auth.userEmailRequired"),
     USER_INACTIVE("FORBIDDEN", "error.auth.userInactive"),
     OTP_RESEND_TOO_SOON("TOO_MANY_REQUESTS", "error.otp.resendTooSoon"),
@@ -45,6 +47,11 @@ public enum MessageCode {
     GROUP_CODE_EXISTS("EXISTED", "error.access.groupCodeExists"),
     GROUP_NAME_EXISTS("EXISTED", "error.access.groupNameExists"),
     MENU_NOT_FOUND("MENU_NOT_FOUND", "error.access.menuNotFound"),
+    MENU_CODE_EXISTS("EXISTED", "error.access.menuCodeExists"),
+    MENU_IN_USE("CONFLICT", "error.access.menuInUse"),
+    MENU_HAS_CHILDREN("CONFLICT", "error.access.menuHasChildren"),
+    MENU_STATUS_INVALID("INVALID", "error.access.menuStatusInvalid"),
+    MENU_PARENT_INVALID("INVALID", "error.access.menuParentInvalid"),
     USER_ID_REQUIRED("INPUT_INVALID", "error.access.userIdRequired"),
     GROUP_ID_REQUIRED("INPUT_INVALID", "error.access.groupIdRequired"),
     PERMISSION_NOT_FOUND("PERMISSION_NOT_FOUND", "error.access.permissionNotFound"),
@@ -76,6 +83,10 @@ public enum MessageCode {
     EXCEL_EXPORT_JOB_NOT_FOUND("NOT_FOUND", "error.excel.export.jobNotFound"),
     EXCEL_EXPORT_NOT_READY("INVALID", "error.excel.export.notReady"),
     EXCEL_EXPORT_FAILED("INVALID", "error.excel.export.failed"),
+    EXCEL_EXPORT_REPORT_NOT_SUPPORTED("INVALID", "error.excel.export.reportNotSupported"),
+    EXCEL_EXPORT_TEMPLATE_INVALID("INVALID", "error.excel.export.templateInvalid"),
+    EXCEL_EXPORT_FILE_EXPIRED("GONE", "error.excel.export.fileExpired"),
+    EXCEL_EXPORT_CANCELLED("INVALID", "error.excel.export.cancelled"),
     COMPANY_NOT_FOUND("COMPANY_NOT_FOUND", "error.company.notFound"),
     COMPANY_CODE_EXISTS("EXISTED", "error.company.codeExists"),
     COMPANY_STATUS_INVALID("INVALID", "error.company.statusInvalid"),
@@ -112,3 +123,4 @@ public enum MessageCode {
         return EnumUtils.getEnum(MessageCode.class, name);
     }
 }
+

@@ -21,7 +21,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(BusinessException.class)
     public ResponseEntity<BaseResponse<Object>> handleBusinessException(BusinessException ex) {
-        String template = resolveMessage(ex.getMessageKey());
+        String template = resolveMessage(ex.getMessageKey(), ex.getArgs());
         String description = template;
 
         if (ex.getParamKey() != null && !ex.getParamKey().isBlank()) {
@@ -34,9 +34,10 @@ public class GlobalExceptionHandler {
 
         HttpStatus status = ex.getStatusCode() != null ? ex.getStatusCode() : HttpStatus.BAD_REQUEST;
         log.warn("BusinessException handled: code={}, status={}, messageKey={}, requestId={}",
-                code, status.value(), ex.getMessageKey(), RequestContextHolder.getRequestId());
-        return ResponseEntity.status(status)
-                .body(BaseResponse.error(RequestContextHolder.getRequestId(), description, code, status.value()));
+                code, status.value(), ex.getMessageKey(), RequestContextHolder.getRequestId(), ex);
+        BaseResponse<Object> body = BaseResponse.error(RequestContextHolder.getRequestId(), description, code, status.value());
+        body.setData(ex.getData());
+        return ResponseEntity.status(status).body(body);
     }
 
     @ExceptionHandler(Exception.class)
@@ -65,11 +66,18 @@ public class GlobalExceptionHandler {
     }
 
     private String resolveMessage(String key) {
+        return resolveMessage(key, new Object[]{});
+    }
+
+    private String resolveMessage(String key, Object... args) {
         if (key == null || key.isBlank()) {
             return "";
         }
 
         try {
+            if (args != null && args.length > 0) {
+                return messageHelper.getMsg(key, args);
+            }
             return messageHelper.getMsg(key, key);
         } catch (Exception ignored) {
             return key;
