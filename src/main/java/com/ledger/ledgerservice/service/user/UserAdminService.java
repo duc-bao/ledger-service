@@ -1,6 +1,7 @@
 package com.ledger.ledgerservice.service.user;
 
 import com.ledger.ledgerservice.model.dto.request.AdminUserSearchRequest;
+import com.ledger.ledgerservice.model.dto.request.AdminUpdateUserRequest;
 import com.ledger.ledgerservice.model.dto.response.AdminUserDetailResponse;
 import com.ledger.ledgerservice.model.dto.response.AdminUserItemResponse;
 import org.springframework.data.domain.Page;
@@ -9,6 +10,8 @@ public interface UserAdminService {
     Page<AdminUserItemResponse> getUsers(AdminUserSearchRequest request);
 
     AdminUserDetailResponse getUserDetail(String userId);
+
+    AdminUserDetailResponse updateUser(String userId, AdminUpdateUserRequest request);
 
     void lockUser(String userId);
 

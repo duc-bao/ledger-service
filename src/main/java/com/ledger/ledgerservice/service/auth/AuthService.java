@@ -6,6 +6,7 @@ import com.ledger.ledgerservice.model.dto.request.LoginRequestOtpRequest;
 import com.ledger.ledgerservice.model.dto.request.LoginVerifyOtpRequest;
 import com.ledger.ledgerservice.model.dto.request.ForgotPasswordRequestOtpRequest;
 import com.ledger.ledgerservice.model.dto.request.ForgotPasswordVerifyOtpRequest;
+import com.ledger.ledgerservice.model.dto.response.AuthAttemptResponse;
 import com.ledger.ledgerservice.model.dto.response.LoginTokenResponse;
 import com.ledger.ledgerservice.model.entity.User;
 import com.ledger.ledgerservice.model.enums.MessageCode;
@@ -24,6 +25,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.security.SecureRandom;
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -42,27 +44,49 @@ public class AuthService {
     private final JwtProperties jwtProperties;
     private final MessageHelper messageHelper;
     private final TokenBlacklistService tokenBlacklistService;
+    private final AuthAttemptCacheService authAttemptCacheService;
 
-    public void requestLoginOtp(LoginRequestOtpRequest request) {
+    @Transactional
+    public LoginTokenResponse requestLoginOtp(LoginRequestOtpRequest request) {
         User user = userRepository.findByUsername(request.getUsername())
                 .orElseThrow(() -> new BusinessException(MessageCode.USER_NOT_FOUND, HttpStatus.UNAUTHORIZED));
 
+        if (authAttemptCacheService.isPasswordLocked(user.getUsername())) {
+            AuthAttemptState state = authAttemptCacheService.getPasswordLockState(user.getUsername());
+            throw attemptException(MessageCode.PASSWORD_ATTEMPTS_EXCEEDED, HttpStatus.TOO_MANY_REQUESTS, state);
+        }
+
         if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
-            throw new BusinessException(MessageCode.PASSWORD_INVALID, HttpStatus.UNAUTHORIZED);
+            AuthAttemptState state = authAttemptCacheService.recordPasswordFailure(user.getUsername());
+            if (state.locked()) {
+                throw attemptException(MessageCode.PASSWORD_ATTEMPTS_EXCEEDED, HttpStatus.TOO_MANY_REQUESTS, state);
+            }
+            throw attemptException(MessageCode.PASSWORD_INVALID, HttpStatus.UNAUTHORIZED, state);
         }
         if (user.getStatus() == UserStatus.LOCKED) {
             throw new BusinessException(MessageCode.USER_LOCKED, HttpStatus.FORBIDDEN);
+        }
+        if (user.getStatus() != UserStatus.ACTIVE) {
+            throw new BusinessException(MessageCode.USER_INACTIVE, HttpStatus.FORBIDDEN);
+        }
+
+        authAttemptCacheService.clearPasswordFailures(user.getUsername());
+
+        if (!Boolean.TRUE.equals(user.getTwoFactorEnabled())) {
+            return issueLoginToken(user, false);
+        }
+
+        if (otpCacheService.isLocked(user.getUsername())) {
+            AuthAttemptState state = AuthAttemptState.locked(0, 5, otpCacheService.getLockRemainingSeconds(user.getUsername()));
+            throw attemptException(MessageCode.OTP_ATTEMPTS_EXCEEDED, HttpStatus.TOO_MANY_REQUESTS, state);
         }
 
         if (!StringUtils.hasText(user.getEmail())) {
             throw new BusinessException(MessageCode.USER_EMAIL_REQUIRED, HttpStatus.BAD_REQUEST);
         }
 
-        if (otpCacheService.isLocked(user.getUsername())) {
-            throw new BusinessException(MessageCode.OTP_NO_ATTEMPTS_LEFT, HttpStatus.TOO_MANY_REQUESTS);
-        }
-        if (user.getStatus() == UserStatus.LOCKED) {
-            throw new BusinessException(MessageCode.USER_LOCKED, HttpStatus.FORBIDDEN);
+        if (otpCacheService.isResendCoolingDown(user.getUsername())) {
+            throw new BusinessException(MessageCode.OTP_RESEND_TOO_SOON, HttpStatus.TOO_MANY_REQUESTS);
         }
 
         String otp = generateOtp();
@@ -87,40 +111,39 @@ public class AuthService {
                 .htmlBody(body)
                 .build();
         emailTemplateService.sendAsync(emailRequest);
+        return LoginTokenResponse.builder()
+                .twoFactorRequired(true)
+                .remainingAttempts(5)
+                .build();
     }
 
+    @Transactional
     public LoginTokenResponse verifyLoginOtp(LoginVerifyOtpRequest request) {
         User user = userRepository.findByUsername(request.getUsername())
                 .orElseThrow(() -> new BusinessException(MessageCode.USER_NOT_FOUND, HttpStatus.UNAUTHORIZED));
 
+        if (!Boolean.TRUE.equals(user.getTwoFactorEnabled())) {
+            return issueLoginToken(user, false);
+        }
+
         if (otpCacheService.isLocked(user.getUsername())) {
-            throw new BusinessException(MessageCode.OTP_NO_ATTEMPTS_LEFT, HttpStatus.TOO_MANY_REQUESTS);
+            AuthAttemptState state = AuthAttemptState.locked(0, 5, otpCacheService.getLockRemainingSeconds(user.getUsername()));
+            throw attemptException(MessageCode.OTP_ATTEMPTS_EXCEEDED, HttpStatus.TOO_MANY_REQUESTS, state);
         }
 
         String expectedOtp = otpCacheService.getOtp(user.getUsername());
         if (!"999999".equals(request.getOtp()) &&
                 (!StringUtils.hasText(expectedOtp) || !expectedOtp.equals(request.getOtp()))) {
-            long attempts = otpCacheService.recordFailedAttempt(user.getUsername());
-            if (attempts >= 5) {
-                throw new BusinessException(MessageCode.OTP_NO_ATTEMPTS_LEFT, HttpStatus.TOO_MANY_REQUESTS);
+            AuthAttemptState state = otpCacheService.recordFailedAttempt(user.getUsername());
+            if (state.locked()) {
+                throw attemptException(MessageCode.OTP_ATTEMPTS_EXCEEDED, HttpStatus.TOO_MANY_REQUESTS, state);
             }
-            throw new BusinessException(MessageCode.OTP_INVALID, HttpStatus.BAD_REQUEST);
+            throw attemptException(MessageCode.OTP_INVALID, HttpStatus.BAD_REQUEST, state);
         }
 
         otpCacheService.clearOtp(user.getUsername());
-        Map<String, Object> claims = new HashMap<>();
-        claims.put("userId", user.getId());
-        claims.put("username", user.getUsername());
-
-        int ttlSeconds = jwtProperties.getTimeToLive() != null ? jwtProperties.getTimeToLive() : 3600;
-        String secret = StringUtils.hasText(jwtProperties.getSecret()) ? jwtProperties.getSecret() : jwtProperties.getKey();
-        String accessToken = jwtUtils.generateToken(claims, secret, ttlSeconds, TimeUnit.SECONDS);
-
-        return LoginTokenResponse.builder()
-                .accessToken(accessToken)
-                .tokenType("Bearer")
-                .expiresInSeconds(ttlSeconds)
-                .build();
+        otpCacheService.clearFailures(user.getUsername());
+        return issueLoginToken(user, false);
     }
 
     public void requestForgotPasswordOtp(ForgotPasswordRequestOtpRequest request) {
@@ -135,7 +158,8 @@ public class AuthService {
             throw new BusinessException(MessageCode.OTP_RESEND_TOO_SOON, HttpStatus.TOO_MANY_REQUESTS);
         }
         if (otpCacheService.isLocked(email)) {
-            throw new BusinessException(MessageCode.OTP_NO_ATTEMPTS_LEFT, HttpStatus.TOO_MANY_REQUESTS);
+            AuthAttemptState state = AuthAttemptState.locked(0, 5, otpCacheService.getLockRemainingSeconds(email));
+            throw attemptException(MessageCode.OTP_ATTEMPTS_EXCEEDED, HttpStatus.TOO_MANY_REQUESTS, state);
         }
 
         String otp = generateOtp();
@@ -153,19 +177,21 @@ public class AuthService {
             throw new BusinessException(MessageCode.USER_INACTIVE, HttpStatus.FORBIDDEN);
         }
         if (otpCacheService.isLocked(email)) {
-            throw new BusinessException(MessageCode.OTP_NO_ATTEMPTS_LEFT, HttpStatus.TOO_MANY_REQUESTS);
+            AuthAttemptState state = AuthAttemptState.locked(0, 5, otpCacheService.getLockRemainingSeconds(email));
+            throw attemptException(MessageCode.OTP_ATTEMPTS_EXCEEDED, HttpStatus.TOO_MANY_REQUESTS, state);
         }
 
         String expectedOtp = otpCacheService.getOtp(email);
         if ((!StringUtils.hasText(expectedOtp) || !expectedOtp.equals(request.getOtp())) && !"999999".equals(request.getOtp())) {
-            long attempts = otpCacheService.recordFailedAttempt(email);
-            if (attempts >= 5) {
-                throw new BusinessException(MessageCode.OTP_NO_ATTEMPTS_LEFT, HttpStatus.TOO_MANY_REQUESTS);
+            AuthAttemptState state = otpCacheService.recordFailedAttempt(email);
+            if (state.locked()) {
+                throw attemptException(MessageCode.OTP_ATTEMPTS_EXCEEDED, HttpStatus.TOO_MANY_REQUESTS, state);
             }
-            throw new BusinessException(MessageCode.OTP_INVALID, HttpStatus.BAD_REQUEST);
+            throw attemptException(MessageCode.OTP_INVALID, HttpStatus.BAD_REQUEST, state);
         }
 
         otpCacheService.clearOtp(email);
+        otpCacheService.clearFailures(email);
         if (passwordEncoder.matches(request.getNewPassword(), user.getPassword())) {
             throw new BusinessException(MessageCode.NEW_PASSWORD_DIFFERENT_REQUIRED, HttpStatus.BAD_REQUEST);
         }
@@ -193,6 +219,36 @@ public class AuthService {
     private String generateOtp() {
         int value = RANDOM.nextInt(1_000_000);
         return String.format("%06d", value);
+    }
+
+    private LoginTokenResponse issueLoginToken(User user, boolean twoFactorRequired) {
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("userId", user.getId());
+        claims.put("username", user.getUsername());
+
+        int ttlSeconds = jwtProperties.getTimeToLive() != null ? jwtProperties.getTimeToLive() : 3600;
+        String secret = StringUtils.hasText(jwtProperties.getSecret()) ? jwtProperties.getSecret() : jwtProperties.getKey();
+        String accessToken = jwtUtils.generateToken(claims, secret, ttlSeconds, TimeUnit.SECONDS);
+        user.setLastLoginAt(LocalDateTime.now());
+        user.setUpdatedBy(user.getUsername());
+        userRepository.save(user);
+
+        return LoginTokenResponse.builder()
+                .accessToken(accessToken)
+                .tokenType("Bearer")
+                .expiresInSeconds(ttlSeconds)
+                .twoFactorRequired(twoFactorRequired)
+                .build();
+    }
+
+    private BusinessException attemptException(MessageCode messageCode, HttpStatus status, AuthAttemptState state) {
+        AuthAttemptResponse data = AuthAttemptResponse.builder()
+                .remainingAttempts(state.remainingAttempts())
+                .maxAttempts(state.maxAttempts())
+                .lockSeconds(state.lockSeconds())
+                .locked(state.locked())
+                .build();
+        return new BusinessException(messageCode, status, data, state.remainingAttempts(), state.lockSeconds());
     }
 
     private void sendOtpEmail(User user, String otp) {

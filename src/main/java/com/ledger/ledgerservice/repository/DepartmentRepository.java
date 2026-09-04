@@ -2,6 +2,8 @@ package com.ledger.ledgerservice.repository;
 
 import com.ledger.ledgerservice.model.entity.DepartmentEntity;
 import jakarta.persistence.QueryHint;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.jpa.repository.QueryHints;
@@ -19,6 +21,22 @@ public interface DepartmentRepository extends JpaRepository<DepartmentEntity, St
     List<DepartmentEntity> findByParentIdOrderBySortOrderAscCodeAsc(String parentId);
 
     List<DepartmentEntity> findByIsActiveTrueOrderByTreeLevelAscSortOrderAscCodeAsc();
+
+    @Query("""
+            SELECT d FROM DepartmentEntity d
+            WHERE (:status IS NULL OR :status = '' OR UPPER(d.status) = UPPER(:status))
+              AND (:isActive IS NULL OR d.isActive = :isActive)
+              AND (
+                  :keyword IS NULL OR :keyword = ''
+                  OR LOWER(d.code) LIKE CONCAT('%', :keyword, '%')
+                  OR LOWER(d.name) LIKE CONCAT('%', :keyword, '%')
+                  OR LOWER(d.shortName) LIKE CONCAT('%', :keyword, '%')
+              )
+            """)
+    Page<DepartmentEntity> searchDepartments(@Param("keyword") String keyword,
+                                             @Param("status") String status,
+                                             @Param("isActive") Boolean isActive,
+                                             Pageable pageable);
 
     @QueryHints(value = {
         @QueryHint(name = org.hibernate.jpa.HibernateHints.HINT_FETCH_SIZE, value = "500"),

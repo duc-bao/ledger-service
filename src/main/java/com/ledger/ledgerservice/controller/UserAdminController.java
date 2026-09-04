@@ -1,5 +1,6 @@
 package com.ledger.ledgerservice.controller;
 
+import com.ledger.ledgerservice.model.dto.request.AdminUpdateUserRequest;
 import com.ledger.ledgerservice.model.dto.request.AdminUserSearchRequest;
 import com.ledger.ledgerservice.model.dto.response.AdminUserDetailResponse;
 import com.ledger.ledgerservice.model.dto.response.AdminUserItemResponse;
@@ -48,6 +49,14 @@ public class UserAdminController {
     @Operation(summary = "Get user details")
     public ResponseEntity<BaseResponse<AdminUserDetailResponse>> getUserDetail(@PathVariable String userId) {
         AdminUserDetailResponse data = userAdminService.getUserDetail(userId);
+        return responseHelper.ok(MessageCode.SUCCESS, data, HttpStatus.OK);
+    }
+
+    @PutMapping("/{userId}")
+    @Operation(summary = "Update user account")
+    public ResponseEntity<BaseResponse<AdminUserDetailResponse>> updateUser(@PathVariable String userId,
+                                                                            @Valid @RequestBody AdminUpdateUserRequest request) {
+        AdminUserDetailResponse data = userAdminService.updateUser(userId, request);
         return responseHelper.ok(MessageCode.SUCCESS, data, HttpStatus.OK);
     }
 

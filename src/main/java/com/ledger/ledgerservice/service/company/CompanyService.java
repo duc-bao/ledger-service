@@ -4,6 +4,7 @@ import com.ledger.ledgerservice.model.dto.request.company.CreateCompanyRequest;
 import com.ledger.ledgerservice.model.dto.request.company.SearchCompany;
 import com.ledger.ledgerservice.model.dto.response.company.CompanyResponse;
 import com.ledger.ledgerservice.model.dto.response.company.CompanyTreeResponse;
+import com.ledger.ledgerservice.model.enums.CompanyStatus;
 
 import java.util.List;
 
@@ -17,4 +18,6 @@ public interface CompanyService {
     List<CompanyTreeResponse> getCompanyTree();
 
     CompanyResponse updateCompany(String companyId, CreateCompanyRequest request);
+
+    CompanyResponse changeStatus(String companyId, CompanyStatus status);
 }

@@ -4,6 +4,7 @@ import com.ledger.ledgerservice.exception.BusinessException;
 import com.ledger.ledgerservice.model.context.RequestContext;
 import com.ledger.ledgerservice.model.context.holder.RequestContextHolder;
 import com.ledger.ledgerservice.model.dto.request.ChangePasswordRequest;
+import com.ledger.ledgerservice.model.dto.request.UpdateTwoFactorRequest;
 import com.ledger.ledgerservice.model.dto.request.UpdateMyProfileRequest;
 import com.ledger.ledgerservice.model.dto.response.UserProfileResponse;
 import com.ledger.ledgerservice.model.entity.User;
@@ -89,6 +90,16 @@ public class UserProfileServiceImpl implements UserProfileService {
         userRepository.save(user);
     }
 
+    @Override
+    @Transactional
+    public UserProfileResponse updateTwoFactor(UpdateTwoFactorRequest request) {
+        User user = getCurrentUser();
+        user.setTwoFactorEnabled(Boolean.TRUE.equals(request.getEnabled()));
+        user.setUpdatedBy(user.getUsername());
+        user.setUpdatedAt(LocalDateTime.now());
+        return toResponse(userRepository.save(user));
+    }
+
     private User getCurrentUser() {
         String username = getCurrentUsername();
         return userRepository.findByUsername(username)
@@ -116,6 +127,7 @@ public class UserProfileServiceImpl implements UserProfileService {
                 .phone(user.getPhone())
                 .userType(user.getUserType())
                 .requireChange(user.getRequireChange())
+                .twoFactorEnabled(user.getTwoFactorEnabled())
                 .createdAt(user.getCreatedAt())
                 .updatedAt(user.getUpdatedAt())
                 .build();

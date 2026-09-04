@@ -2,6 +2,7 @@ package com.ledger.ledgerservice.service.user;
 
 import com.ledger.ledgerservice.exception.BusinessException;
 import com.ledger.ledgerservice.model.context.holder.RequestContextHolder;
+import com.ledger.ledgerservice.model.dto.request.AdminUpdateUserRequest;
 import com.ledger.ledgerservice.model.dto.request.AdminUserSearchRequest;
 import com.ledger.ledgerservice.model.dto.response.AdminUserDetailResponse;
 import com.ledger.ledgerservice.model.dto.response.AdminUserItemResponse;
@@ -98,6 +99,7 @@ public class UserAdminServiceImpl implements UserAdminService {
                 .phone(user.getPhone())
                 .userType(user.getUserType())
                 .requireChange(user.getRequireChange())
+                .twoFactorEnabled(user.getTwoFactorEnabled())
                 .status(user.getStatus())
                 .groupId(group != null ? group.getId() : null)
                 .groupCode(group != null ? group.getCode() : null)
@@ -107,6 +109,46 @@ public class UserAdminServiceImpl implements UserAdminService {
                 .updatedAt(user.getUpdatedAt())
                 .updatedBy(user.getUpdatedBy())
                 .build();
+    }
+
+    @Override
+    @Transactional
+    public AdminUserDetailResponse updateUser(String userId, AdminUpdateUserRequest request) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new BusinessException(MessageCode.USER_NOT_FOUND, HttpStatus.NOT_FOUND));
+        validateNotSuperAdmin(userId);
+
+        String normalizedEmail = normalizeNullable(request.getEmail());
+        if (StringUtils.hasText(normalizedEmail)) {
+            userRepository.findByEmail(normalizedEmail)
+                    .filter(existing -> !existing.getId().equals(userId))
+                    .ifPresent(existing -> {
+                        throw new BusinessException(MessageCode.USER_EMAIL_EXISTS, HttpStatus.CONFLICT);
+                    });
+        }
+
+        String normalizedPhone = normalizeNullable(request.getPhone());
+        if (StringUtils.hasText(normalizedPhone)) {
+            userRepository.findByPhone(normalizedPhone)
+                    .filter(existing -> !existing.getId().equals(userId))
+                    .ifPresent(existing -> {
+                        throw new BusinessException(MessageCode.USER_PHONE_EXISTS, HttpStatus.CONFLICT);
+                    });
+        }
+
+        user.setEmail(normalizedEmail);
+        user.setPhone(normalizedPhone);
+        user.setFullName(normalizeNullable(request.getFullName()));
+        user.setUserType(normalizeNullable(request.getUserType()));
+        if (request.getRequireChange() != null) {
+            user.setRequireChange(request.getRequireChange());
+        }
+        if (request.getTwoFactorEnabled() != null) {
+            user.setTwoFactorEnabled(request.getTwoFactorEnabled());
+        }
+        touchAudit(user);
+        userRepository.save(user);
+        return getUserDetail(userId);
     }
 
     @Override
@@ -213,6 +255,7 @@ public class UserAdminServiceImpl implements UserAdminService {
                 .phone(user.getPhone())
                 .userType(user.getUserType())
                 .requireChange(user.getRequireChange())
+                .twoFactorEnabled(user.getTwoFactorEnabled())
                 .status(user.getStatus())
                 .groupId(group != null ? group.getId() : null)
                 .groupCode(group != null ? group.getCode() : null)
@@ -253,5 +296,12 @@ public class UserAdminServiceImpl implements UserAdminService {
             return "";
         }
         return value.trim().toLowerCase(Locale.ROOT);
+    }
+
+    private String normalizeNullable(String value) {
+        if (!StringUtils.hasText(value)) {
+            return null;
+        }
+        return value.trim();
     }
 }

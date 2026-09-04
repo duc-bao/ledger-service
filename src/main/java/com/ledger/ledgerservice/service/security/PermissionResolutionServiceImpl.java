@@ -52,6 +52,16 @@ public class PermissionResolutionServiceImpl implements PermissionResolutionServ
 
     @Override
     @Transactional(readOnly = true)
+    public Set<String> getCompanyPermissions(String userId, String companyId) {
+        getUserOrThrow(userId);
+        if (!StringUtils.hasText(companyId)) {
+            return Set.of();
+        }
+        return permissionRepository.findActiveCompanyPermissionCodes(userId, companyId.trim());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public boolean hasPermission(String userId, String permissionCode, String departmentId) {
         User user = getUserOrThrow(userId);
         if (!UserStatus.ACTIVE.equals(user.getStatus())) {
@@ -89,7 +99,8 @@ public class PermissionResolutionServiceImpl implements PermissionResolutionServ
         if (permissionRepository.existsAnyActiveGlobalPermission(userId, permissionIds)) {
             return true;
         }
-        return permissionRepository.existsAnyActiveDepartmentPermission(userId, permissionIds);
+        return permissionRepository.existsAnyActiveDepartmentPermission(userId, permissionIds)
+                || permissionRepository.existsAnyActiveCompanyPermission(userId, permissionIds);
     }
 
     private List<PermissionApi> findMatchingActivePermissionApis(String method, String uri) {

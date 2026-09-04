@@ -13,11 +13,14 @@ import lombok.Setter;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Schema(description = "Request payload for assigning a role to a department membership")
 public class DepartmentUserRoleCreateRequest {
-    @NotBlank(message = "error.department.userNotFound")
-    @Schema(description = "Department membership identifier", example = "department-user-id", requiredMode = Schema.RequiredMode.REQUIRED)
-    private String departmentUserId;
+    @NotBlank(message = "error.http.notFound")
+    @Schema(description = "Department identifier", example = "department-id", requiredMode = Schema.RequiredMode.REQUIRED)
+    private String departmentId;
+
+    @NotBlank(message = "error.auth.userNotFound")
+    @Schema(description = "User identifier", example = "user-id", requiredMode = Schema.RequiredMode.REQUIRED)
+    private String userId;
 
     @NotBlank(message = "error.access.groupNotFound")
     @Schema(description = "Role identifier", example = "group-id", requiredMode = Schema.RequiredMode.REQUIRED)

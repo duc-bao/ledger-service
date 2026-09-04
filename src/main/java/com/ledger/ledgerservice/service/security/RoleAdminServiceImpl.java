@@ -3,15 +3,19 @@ package com.ledger.ledgerservice.service.security;
 import com.ledger.ledgerservice.exception.BusinessException;
 import com.ledger.ledgerservice.model.context.holder.RequestContextHolder;
 import com.ledger.ledgerservice.model.dto.request.CreateRoleRequest;
+import com.ledger.ledgerservice.model.dto.request.UpdateRoleRequest;
 import com.ledger.ledgerservice.model.dto.response.RoleResponse;
 import com.ledger.ledgerservice.model.entity.Group;
 import com.ledger.ledgerservice.model.enums.MessageCode;
 import com.ledger.ledgerservice.model.enums.RecordStatus;
 import com.ledger.ledgerservice.repository.DepartmentUserRoleRepository;
+import com.ledger.ledgerservice.repository.CompanyUserRoleRepository;
 import com.ledger.ledgerservice.repository.GroupRepository;
 import com.ledger.ledgerservice.repository.RolePermissionRepository;
 import com.ledger.ledgerservice.repository.UserGroupRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,6 +30,7 @@ public class RoleAdminServiceImpl implements RoleAdminService {
     private final GroupRepository groupRepository;
     private final UserGroupRepository userGroupRepository;
     private final DepartmentUserRoleRepository departmentUserRoleRepository;
+    private final CompanyUserRoleRepository companyUserRoleRepository;
     private final RolePermissionRepository rolePermissionRepository;
 
     @Override
@@ -54,6 +59,40 @@ public class RoleAdminServiceImpl implements RoleAdminService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public Page<RoleResponse> searchRoles(String keyword, RecordStatus status, Pageable pageable) {
+        String normalizedKeyword = StringUtils.hasText(keyword) ? keyword.trim().toLowerCase(Locale.ROOT) : "";
+        return groupRepository.searchRoles(normalizedKeyword, status, pageable).map(this::toResponse);
+    }
+
+    @Override
+    @Transactional
+    public RoleResponse updateRole(String roleId, UpdateRoleRequest request) {
+        Group group = groupRepository.findByIdAndStatus(roleId, RecordStatus.ACTIVE)
+                .orElseThrow(() -> new BusinessException(MessageCode.GROUP_NOT_FOUND, HttpStatus.NOT_FOUND));
+        if (Boolean.TRUE.equals(group.getIsSuperAdmin()) || Boolean.TRUE.equals(group.getIsDefault())) {
+            throw new BusinessException(MessageCode.CONFLICT, HttpStatus.CONFLICT);
+        }
+
+        String code = trimRequired(request.getCode()).toUpperCase(Locale.ROOT);
+        String name = trimRequired(request.getName());
+        if (groupRepository.existsByCodeIgnoreCaseAndIdNot(code, roleId)) {
+            throw new BusinessException(MessageCode.GROUP_CODE_EXISTS, HttpStatus.CONFLICT);
+        }
+        if (groupRepository.existsByNameIgnoreCaseAndIdNot(name, roleId)) {
+            throw new BusinessException(MessageCode.GROUP_NAME_EXISTS, HttpStatus.CONFLICT);
+        }
+
+        group.setCode(code);
+        group.setName(name);
+        group.setDescription(trimNullable(request.getDescription()));
+        group.setSortOrder(request.getSortOrder() != null ? request.getSortOrder() : group.getSortOrder());
+        group.setUpdatedAt(LocalDateTime.now());
+        group.setUpdatedBy(resolveActor());
+        return toResponse(groupRepository.save(group));
+    }
+
+    @Override
     @Transactional
     public void deleteRole(String roleId) {
         Group group = groupRepository.findByIdAndStatus(roleId, RecordStatus.ACTIVE)
@@ -63,6 +102,7 @@ public class RoleAdminServiceImpl implements RoleAdminService {
         }
         if (!userGroupRepository.findByGroupIdAndStatus(roleId, RecordStatus.ACTIVE).isEmpty()
                 || departmentUserRoleRepository.existsByGroupId(roleId)
+                || !companyUserRoleRepository.findByGroupIdAndStatus(roleId, RecordStatus.ACTIVE).isEmpty()
                 || !rolePermissionRepository.findByGroupIdAndStatus(roleId, RecordStatus.ACTIVE).isEmpty()) {
             throw new BusinessException(MessageCode.CONFLICT, HttpStatus.CONFLICT);
         }

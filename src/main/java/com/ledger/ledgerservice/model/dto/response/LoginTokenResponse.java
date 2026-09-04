@@ -9,4 +9,7 @@ public class LoginTokenResponse {
     private String accessToken;
     private String tokenType;
     private long expiresInSeconds;
+    private boolean twoFactorRequired;
+    private int remainingAttempts;
+    private long lockSeconds;
 }

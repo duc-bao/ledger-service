@@ -28,14 +28,12 @@ public class PermissionCreateRequest {
     @Schema(description = "Permission display name", example = "Create user", requiredMode = Schema.RequiredMode.REQUIRED)
     private String name;
 
-    @NotBlank(message = "error.code.invalid")
     @Size(max = 50, message = "error.code.invalid")
-    @Schema(description = "Module code", example = "USER_MANAGEMENT", requiredMode = Schema.RequiredMode.REQUIRED)
+    @Schema(description = "Optional module code", example = "USER_MANAGEMENT")
     private String moduleCode;
 
-    @NotBlank(message = "error.code.invalid")
     @Size(max = 50, message = "error.code.invalid")
-    @Schema(description = "Action code", example = "CREATE", requiredMode = Schema.RequiredMode.REQUIRED)
+    @Schema(description = "Optional action code", example = "CREATE")
     private String actionCode;
 
     @Size(max = 50, message = "error.code.invalid")
@@ -45,4 +43,12 @@ public class PermissionCreateRequest {
     @Size(max = 500, message = "error.invalid")
     @Schema(description = "Optional description", example = "Allow creating new users")
     private String description;
+
+    @Size(max = 36, message = "error.code.invalid")
+    @Schema(description = "Optional Menu ID to automatically bind this permission to a UI menu", example = "menu-user-id")
+    private String menuId;
+
+    @Size(max = 50, message = "error.invalid")
+    @Schema(description = "Optional display action label for UI menu action", example = "Thêm mới")
+    private String displayAction;
 }

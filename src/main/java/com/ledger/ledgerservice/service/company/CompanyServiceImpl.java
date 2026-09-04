@@ -151,6 +151,17 @@ public class CompanyServiceImpl implements CompanyService {
         return companyMapper.mapToCompany(savedCompany);
     }
 
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public CompanyResponse changeStatus(String companyId, CompanyStatus status) {
+        if (status == null) {
+            throw new BusinessException(MessageCode.COMPANY_STATUS_INVALID, HttpStatus.BAD_REQUEST);
+        }
+        Company company = getCompanyOrThrow(companyId);
+        company.setStatus(status);
+        return companyMapper.mapToCompany(companyRepository.save(company));
+    }
+
     private Company getCompanyOrThrow(String companyId) {
         if (!StringUtils.hasText(companyId)) {
             throw new BusinessException(MessageCode.COMPANY_NOT_FOUND, HttpStatus.NOT_FOUND);

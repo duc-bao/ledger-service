@@ -15,6 +15,7 @@ public class UserProfileResponse {
     private String phone;
     private String userType;
     private Boolean requireChange;
+    private Boolean twoFactorEnabled;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

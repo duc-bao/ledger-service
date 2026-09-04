@@ -12,7 +12,7 @@ import java.util.concurrent.TimeUnit;
 @Service
 public class OtpCacheService {
     private static final Duration OTP_TTL = Duration.ofMinutes(5);
-    private static final Duration LOCK_TTL = Duration.ofMinutes(15);
+    private static final Duration LOCK_TTL = Duration.ofMinutes(5);
     private static final Duration RESEND_TTL = Duration.ofMinutes(1);
     private static final int MAX_ATTEMPTS = 5;
 
@@ -41,24 +41,31 @@ public class OtpCacheService {
         return redissonClient.<String>getBucket(getOtpKey(username)).get();
     }
 
-    public long recordFailedAttempt(String username) {
+    public AuthAttemptState recordFailedAttempt(String username) {
         RAtomicLong counter = redissonClient.getAtomicLong(getAttemptKey(username));
         if (!counter.isExists()) {
             counter.set(0);
             counter.expire(OTP_TTL);
         }
         long current = counter.incrementAndGet();
+        int remaining = Math.max(MAX_ATTEMPTS - (int) current, 0);
         if (current >= MAX_ATTEMPTS) {
             RBucket<Boolean> lockBucket = redissonClient.getBucket(getLockKey(username));
             lockBucket.set(Boolean.TRUE, LOCK_TTL);
             clearOtp(username);
+            return AuthAttemptState.locked(remaining, MAX_ATTEMPTS, LOCK_TTL.toSeconds());
         }
-        return current;
+        return AuthAttemptState.failed(remaining, MAX_ATTEMPTS);
     }
 
     public void clearOtp(String username) {
         redissonClient.getBucket(getOtpKey(username)).delete();
         redissonClient.getAtomicLong(getAttemptKey(username)).delete();
+    }
+
+    public void clearFailures(String username) {
+        redissonClient.getAtomicLong(getAttemptKey(username)).delete();
+        redissonClient.getBucket(getLockKey(username)).delete();
     }
 
     public long getRemainingAttempts(String username) {

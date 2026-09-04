@@ -16,6 +16,7 @@ public class AdminUserItemResponse {
     private String phone;
     private String userType;
     private Boolean requireChange;
+    private Boolean twoFactorEnabled;
     private UserStatus status;
     private String groupId;
     private String groupCode;
@@ -23,4 +24,3 @@ public class AdminUserItemResponse {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }
-

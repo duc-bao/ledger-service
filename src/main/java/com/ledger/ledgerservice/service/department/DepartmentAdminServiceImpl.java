@@ -3,20 +3,30 @@ package com.ledger.ledgerservice.service.department;
 import com.ledger.ledgerservice.exception.BusinessException;
 import com.ledger.ledgerservice.model.context.holder.RequestContextHolder;
 import com.ledger.ledgerservice.model.dto.request.CreateDepartmentRequest;
+import com.ledger.ledgerservice.model.dto.request.DepartmentSearchRequest;
 import com.ledger.ledgerservice.model.dto.request.UpdateDepartmentRequest;
 import com.ledger.ledgerservice.model.dto.response.DepartmentResponse;
+import com.ledger.ledgerservice.model.dto.response.DepartmentTreeResponse;
 import com.ledger.ledgerservice.model.entity.DepartmentEntity;
 import com.ledger.ledgerservice.model.enums.MessageCode;
 import com.ledger.ledgerservice.repository.DepartmentRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -82,6 +92,104 @@ public class DepartmentAdminServiceImpl implements DepartmentAdminService {
             updateDescendants(saved);
         }
         return toResponse(saved);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public DepartmentResponse getDepartment(String departmentId) {
+        DepartmentEntity department = departmentRepository.findById(departmentId)
+                .orElseThrow(() -> new BusinessException(MessageCode.NOT_FOUND, HttpStatus.NOT_FOUND));
+        return toResponse(department);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<DepartmentResponse> searchDepartments(DepartmentSearchRequest request) {
+        int requestPage = request == null || request.getPage() == null ? 1 : request.getPage();
+        int page = requestPage <= 0 ? 0 : requestPage - 1;
+        int size = request == null || request.getSize() == null || request.getSize() <= 0 ? 20 : Math.min(request.getSize(), 200);
+        String keyword = request == null || !StringUtils.hasText(request.getKeyword()) ? "" : request.getKeyword().trim().toLowerCase(Locale.ROOT);
+        String status = request == null || !StringUtils.hasText(request.getStatus()) ? null : request.getStatus().trim().toUpperCase(Locale.ROOT);
+        Boolean isActive = request == null ? null : request.getIsActive();
+        return departmentRepository.searchDepartments(keyword, status, isActive, PageRequest.of(page, size))
+                .map(this::toResponse);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<DepartmentTreeResponse> getDepartmentTree() {
+        List<DepartmentEntity> departments = departmentRepository.findByIsActiveTrueOrderByTreeLevelAscSortOrderAscCodeAsc();
+        if (departments.isEmpty()) {
+            return List.of();
+        }
+
+        Map<String, List<DepartmentTreeResponse>> childrenByParentId = new HashMap<>();
+        List<DepartmentTreeResponse> allNodes = new ArrayList<>();
+        Set<String> departmentIds = new HashSet<>();
+
+        for (DepartmentEntity dept : departments) {
+            departmentIds.add(dept.getId());
+            DepartmentTreeResponse node = toTreeResponse(dept);
+            allNodes.add(node);
+            if (StringUtils.hasText(dept.getParentId())) {
+                childrenByParentId.computeIfAbsent(dept.getParentId(), ignored -> new ArrayList<>()).add(node);
+            }
+        }
+
+        for (List<DepartmentTreeResponse> children : childrenByParentId.values()) {
+            children.sort(departmentTreeComparator());
+        }
+
+        List<DepartmentTreeResponse> roots = new ArrayList<>();
+        for (DepartmentTreeResponse node : allNodes) {
+            if (!StringUtils.hasText(node.getParentId()) || !departmentIds.contains(node.getParentId())) {
+                roots.add(node);
+            }
+        }
+        roots.sort(departmentTreeComparator());
+
+        for (DepartmentTreeResponse root : roots) {
+            attachChildren(root, childrenByParentId);
+        }
+
+        return roots;
+    }
+
+    private void attachChildren(DepartmentTreeResponse node, Map<String, List<DepartmentTreeResponse>> childrenByParentId) {
+        List<DepartmentTreeResponse> children = childrenByParentId.get(node.getId());
+        if (children == null || children.isEmpty()) {
+            node.setChildren(new ArrayList<>());
+            return;
+        }
+
+        for (DepartmentTreeResponse child : children) {
+            attachChildren(child, childrenByParentId);
+        }
+        node.setChildren(children);
+    }
+
+    private Comparator<DepartmentTreeResponse> departmentTreeComparator() {
+        return Comparator.comparing(DepartmentTreeResponse::getSortOrder, Comparator.nullsLast(Integer::compareTo))
+                .thenComparing(DepartmentTreeResponse::getCode, Comparator.nullsLast(String::compareToIgnoreCase));
+    }
+
+    private DepartmentTreeResponse toTreeResponse(DepartmentEntity entity) {
+        return DepartmentTreeResponse.builder()
+                .id(entity.getId())
+                .code(entity.getCode())
+                .name(entity.getName())
+                .shortName(entity.getShortName())
+                .parentId(entity.getParentId())
+                .ancestors(entity.getAncestors())
+                .sortOrder(entity.getSortOrder())
+                .treeLevel(entity.getTreeLevel())
+                .managerUserId(entity.getManagerUserId())
+                .status(entity.getStatus())
+                .isActive(entity.getIsActive())
+                .createdAt(entity.getCreatedAt())
+                .updatedAt(entity.getUpdatedAt())
+                .children(new ArrayList<>())
+                .build();
     }
 
     private DepartmentEntity resolveParent(String parentId, String currentDepartmentId) {
