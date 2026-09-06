@@ -31,6 +31,7 @@ public class JwtUtils {
             JWTClaimsSet.Builder builder = new JWTClaimsSet.Builder();
             Date date = new Date(System.currentTimeMillis() + unitTime.toMillis(timeActive));
             builder.expirationTime(date);
+            builder.jwtID(UUID.randomUUID().toString());
             List<String> myList = new ArrayList<>(values.keySet());
             for (String key : myList) {
                 builder.claim(key, values.get(key));
@@ -60,6 +61,10 @@ public class JwtUtils {
     public static boolean verified(String token, String secret) {
         try {
             SignedJWT signedJWT = SignedJWT.parse(token);
+            if (!JWSAlgorithm.HS256.equals(signedJWT.getHeader().getAlgorithm())) {
+                log.error("Rejected JWT token with invalid algorithm: {}", signedJWT.getHeader().getAlgorithm());
+                return false;
+            }
             JWSVerifier verifier = new MACVerifier(secret);
             return signedJWT.verify(verifier);
         } catch (Exception ex) {
@@ -105,6 +110,16 @@ public class JwtUtils {
         }
     }
 
+    public static String getJti(String token, String secret) {
+        try {
+            JWTClaimsSet claimsSet = getJWTClaimsSet(token, secret);
+            return claimsSet != null ? claimsSet.getJWTID() : null;
+        } catch (Exception ex) {
+            log.error("Error get JWT ID (jti) = {}", ex.getMessage(), ex);
+            return null;
+        }
+    }
+
     @SneakyThrows
     public static Map<String, Object> getClaims(String token, String secret) {
         try {
@@ -131,6 +146,10 @@ public class JwtUtils {
         JWTClaimsSet claimsSet = null;
         try {
             SignedJWT signedJWT = SignedJWT.parse(token);
+            if (!JWSAlgorithm.HS256.equals(signedJWT.getHeader().getAlgorithm())) {
+                log.error("Rejected JWT claims parsing with invalid algorithm: {}", signedJWT.getHeader().getAlgorithm());
+                return null;
+            }
             JWSVerifier jwsVerifier = new MACVerifier(secret);
             if (signedJWT.verify(jwsVerifier)) {
                 claimsSet = signedJWT.getJWTClaimsSet();

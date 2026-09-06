@@ -8,6 +8,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.env.Environment;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
@@ -32,6 +33,7 @@ public class SpringSecurityConfig {
     private final HeaderFilter headerFilter;
     private final JwtFilterChain jwtFilterChain;
     private final PermissionFilter permissionFilter;
+    private final Environment environment;
 
     @Bean
     public AuthenticationManager authManager(AuthenticationConfiguration config) throws Exception {
@@ -44,14 +46,11 @@ public class SpringSecurityConfig {
     }
 
     @Bean
-    public SecurityFilterChain securityFilterChain(final HttpSecurity filterChain, CorsFilter corsFilter) throws Exception {
-        filterChain.csrf(AbstractHttpConfigurer::disable)
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .authorizeHttpRequests(http -> http
-                        .requestMatchers("/actuator/health", "/error").permitAll()
-                        .requestMatchers("/api/v1/login/**").permitAll()
-                        .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
-                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+    public SecurityFilterChain securityFilterChain(HttpSecurity http, CorsFilter corsFilter) throws Exception {
+        http.csrf(AbstractHttpConfigurer::disable);
+        http.cors(cors -> cors.configurationSource(request -> null));
+        var filterChain = http.authorizeHttpRequests(auth ->
+                auth.requestMatchers("/actuator/health", "/error", "/api/v1/login/**", "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
                         .anyRequest().authenticated());
         filterChain.addFilterBefore(headerFilter, CorsFilter.class);
         filterChain.addFilterBefore(corsFilter, CorsFilter.class);
@@ -63,7 +62,19 @@ public class SpringSecurityConfig {
     @Bean
     public CorsFilter corsFilter() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOriginPatterns(List.of("*"));
+
+        boolean isDevOrTest = environment.matchesProfiles("dev", "test", "local");
+        if (isDevOrTest) {
+            config.setAllowedOriginPatterns(List.of("*"));
+        } else {
+            List<String> origins = corsProp.getAllowedOriginPatterns();
+            if (origins != null && !origins.isEmpty()) {
+                config.setAllowedOriginPatterns(origins);
+            } else {
+                config.setAllowedOriginPatterns(List.of("https://ob-consent.savyint.com", "https://iam-uat.savyint.com"));
+            }
+        }
+
         config.setAllowedMethods(corsProp.getAllowedMethods());
         config.setAllowedHeaders(List.of("*"));
         config.setExposedHeaders(corsProp.getExposedHeaders());

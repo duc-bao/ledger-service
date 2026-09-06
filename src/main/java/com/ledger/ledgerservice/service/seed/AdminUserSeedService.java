@@ -42,7 +42,7 @@ public class AdminUserSeedService implements ApplicationRunner {
                 .fullName("Administrator")
                 .userType("SYSTEM")
                 .email("truongducbaosavyint@gmail.com")
-                .requireChange(false)
+                .requireChange(true)
                 .createdBy(CommonConstant.USERNAME_SYSTEM)
                 .updatedBy(CommonConstant.USERNAME_SYSTEM)
                 .build();

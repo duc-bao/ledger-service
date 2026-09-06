@@ -43,15 +43,16 @@ public class ExcelController {
 
     @GetMapping("/exports/{jobId}/download")
     @Operation(summary = "Download exported file by job", description = "Return the XLSX file when the export job is completed")
-    public ResponseEntity<byte[]> downloadExportedFile(@PathVariable String jobId) {
+    public ResponseEntity<org.springframework.core.io.Resource> downloadExportedFile(@PathVariable String jobId) {
         ExportFilePayload payload = excelService.downloadExportedFile(jobId);
 
         return ResponseEntity.ok()
                 .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                .contentLength(payload.getContentLength())
                 .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment()
                         .filename(payload.getFileName(), StandardCharsets.UTF_8)
                         .build()
                         .toString())
-                .body(payload.getContent());
+                .body(payload.getResource());
     }
 }

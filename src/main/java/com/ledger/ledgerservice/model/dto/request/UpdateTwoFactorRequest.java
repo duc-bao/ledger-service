@@ -7,4 +7,6 @@ import lombok.Data;
 public class UpdateTwoFactorRequest {
     @NotNull(message = "validation.twoFactor.enabled.required")
     private Boolean enabled;
+
+    private String password;
 }

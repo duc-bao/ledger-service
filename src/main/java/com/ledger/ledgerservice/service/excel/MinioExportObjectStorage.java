@@ -53,6 +53,32 @@ public class MinioExportObjectStorage implements ExportObjectStorage {
     }
 
     @Override
+    public void consumeObject(String bucket, String objectKey, java.util.function.Consumer<InputStream> consumer) {
+        try (InputStream stream = minioClient.getObject(
+                GetObjectArgs.builder()
+                        .bucket(bucket)
+                        .object(objectKey)
+                        .build()
+        )) {
+            consumer.accept(stream);
+        } catch (Exception e) {
+            log.error("Failed to safely consume object from MinIO bucket {}, objectKey {}", bucket, objectKey, e);
+            throw new TransientExportException("MinIO stream consumption failed: " + e.getMessage(), e);
+        }
+    }
+
+    @Override
+    public void downloadTo(String bucket, String objectKey, java.io.OutputStream outputStream) {
+        consumeObject(bucket, objectKey, stream -> {
+            try {
+                stream.transferTo(outputStream);
+            } catch (Exception e) {
+                throw new TransientExportException("Failed to transfer MinIO object to output stream: " + e.getMessage(), e);
+            }
+        });
+    }
+
+    @Override
     public String generatePresignedUrl(String bucket, String objectKey, int expiryMinutes) {
         try {
             return minioClient.getPresignedObjectUrl(

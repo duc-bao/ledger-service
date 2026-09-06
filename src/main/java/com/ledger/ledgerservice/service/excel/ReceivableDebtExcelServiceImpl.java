@@ -8,6 +8,7 @@ import com.ledger.ledgerservice.model.enums.MessageCode;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.ss.usermodel.Row.MissingCellPolicy;
+import org.apache.poi.openxml4j.util.ZipSecureFile;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -23,6 +24,15 @@ import java.util.Locale;
 @Slf4j
 public class ReceivableDebtExcelServiceImpl implements ReceivableDebtExcelService {
     private static final int DATA_START_ROW_INDEX = 8;
+    private static final byte[] ZIP_MAGIC_BYTES = new byte[]{0x50, 0x4B, 0x03, 0x04};
+    private static final long MAX_FILE_SIZE = 20 * 1024 * 1024L; // 20MB
+
+    static {
+        // Bảo vệ chống tấn công Zip Bomb trong Apache POI
+        ZipSecureFile.setMinInflateRatio(0.01);
+        ZipSecureFile.setMaxEntrySize(50 * 1024 * 1024L);
+        ZipSecureFile.setMaxTextSize(10 * 1024 * 1024L);
+    }
 
     @Override
     public ReceivableDebtExcelParseResponse parseReceivableDebtReport(MultipartFile file) {
@@ -218,8 +228,23 @@ public class ReceivableDebtExcelServiceImpl implements ReceivableDebtExcelServic
             throw new BusinessException(MessageCode.EXCEL_FILE_EMPTY, HttpStatus.BAD_REQUEST);
         }
 
+        if (file.getSize() > MAX_FILE_SIZE) {
+            throw new BusinessException(MessageCode.EXCEL_FILE_INVALID_TYPE, HttpStatus.BAD_REQUEST);
+        }
+
         String name = file.getOriginalFilename();
         if (name == null || !name.toLowerCase(Locale.ROOT).endsWith(".xlsx")) {
+            throw new BusinessException(MessageCode.EXCEL_FILE_INVALID_TYPE, HttpStatus.BAD_REQUEST);
+        }
+
+        try (InputStream is = file.getInputStream()) {
+            byte[] header = new byte[4];
+            int read = is.read(header);
+            if (read < 4 || header[0] != ZIP_MAGIC_BYTES[0] || header[1] != ZIP_MAGIC_BYTES[1]
+                    || header[2] != ZIP_MAGIC_BYTES[2] || header[3] != ZIP_MAGIC_BYTES[3]) {
+                throw new BusinessException(MessageCode.EXCEL_FILE_INVALID_TYPE, HttpStatus.BAD_REQUEST);
+            }
+        } catch (IOException ex) {
             throw new BusinessException(MessageCode.EXCEL_FILE_INVALID_TYPE, HttpStatus.BAD_REQUEST);
         }
     }

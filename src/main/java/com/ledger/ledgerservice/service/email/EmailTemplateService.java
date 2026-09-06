@@ -21,6 +21,7 @@ import org.springframework.mail.javamail.JavaMailSenderImpl;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
+import org.springframework.web.util.HtmlUtils;
 
 import java.io.InputStream;
 import java.util.HashMap;
@@ -136,7 +137,9 @@ public class EmailTemplateService {
         String result = text;
         for (Map.Entry<String, String> entry : values.entrySet()) {
             String key = "{{" + entry.getKey() + "}}";
-            result = result.replace(key, entry.getValue() == null ? "" : entry.getValue());
+            String rawValue = entry.getValue() == null ? "" : entry.getValue();
+            String safeValue = HtmlUtils.htmlEscape(rawValue);
+            result = result.replace(key, safeValue);
         }
         return result;
     }

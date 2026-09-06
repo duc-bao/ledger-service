@@ -19,6 +19,8 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
+import com.ledger.ledgerservice.util.PageableUtil;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -100,9 +102,9 @@ public class PermissionApiController {
     })
     public ResponseEntity<BaseResponse<PageResponse<PermissionApiResponse>>> search(
             @ParameterObject PermissionApiSearchRequest request,
-            @ParameterObject Pageable pageable
+            @ParameterObject @PageableDefault(size = 20) Pageable pageable
     ) {
-        return responseHelper.ok(MessageCode.SUCCESS, permissionApiService.search(request, pageable));
+        return responseHelper.ok(MessageCode.SUCCESS, permissionApiService.search(request, PageableUtil.clamp(pageable)));
     }
 
     @DeleteMapping("/{permissionApiId}")

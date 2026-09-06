@@ -107,6 +107,71 @@ class DepartmentAdminServiceImplTest {
     }
 
     @Test
+    void getDepartmentTreeReturnsThreeLevelHierarchy() {
+        DepartmentEntity accounting = DepartmentEntity.builder()
+                .id("dept-acc")
+                .code("ACCOUNTING")
+                .name("Phòng Kế Toán")
+                .parentId(null)
+                .ancestors(null)
+                .treeLevel(0)
+                .sortOrder(1)
+                .status("ACTIVE")
+                .isActive(true)
+                .build();
+
+        DepartmentEntity subA = DepartmentEntity.builder()
+                .id("dept-sub-a")
+                .code("ACC_SUB_A")
+                .name("Phòng ban con A")
+                .parentId("dept-acc")
+                .ancestors("dept-acc")
+                .treeLevel(1)
+                .sortOrder(1)
+                .status("ACTIVE")
+                .isActive(true)
+                .build();
+
+        DepartmentEntity subB = DepartmentEntity.builder()
+                .id("dept-sub-b")
+                .code("ACC_SUB_B")
+                .name("Phòng ban con B")
+                .parentId("dept-sub-a")
+                .ancestors("dept-acc,dept-sub-a")
+                .treeLevel(2)
+                .sortOrder(1)
+                .status("ACTIVE")
+                .isActive(true)
+                .build();
+
+        when(departmentRepository.findByIsActiveTrueOrderByTreeLevelAscSortOrderAscCodeAsc())
+                .thenReturn(List.of(accounting, subA, subB));
+
+        List<DepartmentTreeResponse> tree = service.getDepartmentTree();
+
+        assertEquals(1, tree.size());
+        DepartmentTreeResponse root = tree.getFirst();
+        assertEquals("dept-acc", root.getId());
+        assertEquals("ACCOUNTING", root.getCode());
+        assertEquals(0, root.getTreeLevel());
+        assertEquals(1, root.getChildren().size());
+
+        DepartmentTreeResponse childA = root.getChildren().getFirst();
+        assertEquals("dept-sub-a", childA.getId());
+        assertEquals("ACC_SUB_A", childA.getCode());
+        assertEquals("dept-acc", childA.getParentId());
+        assertEquals(1, childA.getTreeLevel());
+        assertEquals(1, childA.getChildren().size());
+
+        DepartmentTreeResponse childB = childA.getChildren().getFirst();
+        assertEquals("dept-sub-b", childB.getId());
+        assertEquals("ACC_SUB_B", childB.getCode());
+        assertEquals("dept-sub-a", childB.getParentId());
+        assertEquals(2, childB.getTreeLevel());
+        assertTrue(childB.getChildren().isEmpty());
+    }
+
+    @Test
     void getDepartmentTreeReturnsEmptyWhenNoDepartments() {
         when(departmentRepository.findByIsActiveTrueOrderByTreeLevelAscSortOrderAscCodeAsc())
                 .thenReturn(List.of());
