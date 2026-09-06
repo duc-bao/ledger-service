@@ -62,14 +62,17 @@ public class JwtFilterChain extends OncePerRequestFilter {
             }
 
             String token = authHeader.substring(JwtUtils.TOKEN_PREFIX.length()).trim();
-            if (tokenBlacklistService.isBlacklisted(token)) {
-                log.error("Access token is blacklisted");
-                unauthorized(response, MessageCode.UNAUTHORIZED);
-                return;
-            }
             String secret = resolveJwtSecret();
             if (!StringUtils.hasText(secret) || !JwtUtils.verified(token, secret) || JwtUtils.isExpired(token, secret)) {
                 log.error("Cannot verify access token");
+                unauthorized(response, MessageCode.UNAUTHORIZED);
+                return;
+            }
+
+            String jti = JwtUtils.getJti(token, secret);
+            if ((StringUtils.hasText(jti) && tokenBlacklistService.isJtiBlacklisted(jti))
+                    || tokenBlacklistService.isBlacklisted(token)) {
+                log.error("Access token is blacklisted");
                 unauthorized(response, MessageCode.UNAUTHORIZED);
                 return;
             }

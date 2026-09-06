@@ -6,6 +6,9 @@ import com.ledger.ledgerservice.model.dto.request.LoginRequestOtpRequest;
 import com.ledger.ledgerservice.model.dto.request.LoginVerifyOtpRequest;
 import com.ledger.ledgerservice.model.dto.request.ForgotPasswordRequestOtpRequest;
 import com.ledger.ledgerservice.model.dto.request.ForgotPasswordVerifyOtpRequest;
+import com.ledger.ledgerservice.model.context.holder.RequestContextHolder;
+import com.ledger.ledgerservice.model.dto.request.ForgotPasswordResendOtpRequest;
+import com.ledger.ledgerservice.model.dto.request.LoginResendOtpRequest;
 import com.ledger.ledgerservice.model.dto.response.AuthAttemptResponse;
 import com.ledger.ledgerservice.model.dto.response.LoginTokenResponse;
 import com.ledger.ledgerservice.model.entity.User;
@@ -46,8 +49,17 @@ public class AuthService {
     private final TokenBlacklistService tokenBlacklistService;
     private final AuthAttemptCacheService authAttemptCacheService;
 
+    private String resolveClientIp() {
+        return RequestContextHolder.get() != null ? RequestContextHolder.get().getRequestIp() : null;
+    }
+
     @Transactional
     public LoginTokenResponse requestLoginOtp(LoginRequestOtpRequest request) {
+        String clientIp = resolveClientIp();
+        if (StringUtils.hasText(clientIp) && !otpCacheService.checkIpRateLimit(clientIp, "login_otp")) {
+            throw new BusinessException(MessageCode.IP_RATE_LIMIT_EXCEEDED, HttpStatus.TOO_MANY_REQUESTS);
+        }
+
         User user = userRepository.findByUsername(request.getUsername())
                 .orElseThrow(() -> new BusinessException(MessageCode.USER_NOT_FOUND, HttpStatus.UNAUTHORIZED));
 
@@ -146,7 +158,63 @@ public class AuthService {
         return issueLoginToken(user, false);
     }
 
+    public void resendLoginOtp(LoginResendOtpRequest request) {
+        String clientIp = resolveClientIp();
+        if (StringUtils.hasText(clientIp) && !otpCacheService.checkIpRateLimit(clientIp, "resend_login_otp")) {
+            throw new BusinessException(MessageCode.IP_RATE_LIMIT_EXCEEDED, HttpStatus.TOO_MANY_REQUESTS);
+        }
+
+        User user = userRepository.findByUsername(request.getUsername())
+                .orElseThrow(() -> new BusinessException(MessageCode.USER_NOT_FOUND, HttpStatus.NOT_FOUND));
+
+        if (!Boolean.TRUE.equals(user.getTwoFactorEnabled())) {
+            throw new BusinessException(MessageCode.INPUT_INVALID, HttpStatus.BAD_REQUEST);
+        }
+
+        if (user.getStatus() != UserStatus.ACTIVE) {
+            throw new BusinessException(MessageCode.USER_INACTIVE, HttpStatus.FORBIDDEN);
+        }
+
+        if (!otpCacheService.hasOtp(user.getUsername())) {
+            throw new BusinessException(MessageCode.OTP_SESSION_NOT_FOUND, HttpStatus.BAD_REQUEST);
+        }
+
+        if (otpCacheService.isSpamLocked(user.getUsername())) {
+            throw new BusinessException(MessageCode.OTP_RESEND_SPAM_BLOCKED, HttpStatus.TOO_MANY_REQUESTS);
+        }
+
+        if (otpCacheService.isResendCoolingDown(user.getUsername())) {
+            throw new BusinessException(MessageCode.OTP_RESEND_TOO_SOON, HttpStatus.TOO_MANY_REQUESTS);
+        }
+
+        OtpCacheService.ResendCheckResult resendResult = otpCacheService.checkAndRecordResend(user.getUsername());
+        if (resendResult == OtpCacheService.ResendCheckResult.SPAM_BLOCKED) {
+            throw new BusinessException(MessageCode.OTP_RESEND_SPAM_BLOCKED, HttpStatus.TOO_MANY_REQUESTS);
+        }
+        if (resendResult == OtpCacheService.ResendCheckResult.LIMIT_EXCEEDED) {
+            throw new BusinessException(MessageCode.OTP_RESEND_LIMIT_EXCEEDED, HttpStatus.TOO_MANY_REQUESTS);
+        }
+
+        if (otpCacheService.isLocked(user.getUsername())) {
+            AuthAttemptState state = AuthAttemptState.locked(0, 5, otpCacheService.getLockRemainingSeconds(user.getUsername()));
+            throw attemptException(MessageCode.OTP_ATTEMPTS_EXCEEDED, HttpStatus.TOO_MANY_REQUESTS, state);
+        }
+
+        if (!StringUtils.hasText(user.getEmail())) {
+            throw new BusinessException(MessageCode.USER_EMAIL_REQUIRED, HttpStatus.BAD_REQUEST);
+        }
+
+        String otp = generateOtp();
+        otpCacheService.putOtp(user.getUsername(), otp);
+        sendOtpEmail(user, otp);
+    }
+
     public void requestForgotPasswordOtp(ForgotPasswordRequestOtpRequest request) {
+        String clientIp = resolveClientIp();
+        if (StringUtils.hasText(clientIp) && !otpCacheService.checkIpRateLimit(clientIp, "forgot_password_otp")) {
+            throw new BusinessException(MessageCode.IP_RATE_LIMIT_EXCEEDED, HttpStatus.TOO_MANY_REQUESTS);
+        }
+
         String email = request.getEmail();
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new BusinessException(MessageCode.USER_NOT_FOUND, HttpStatus.NOT_FOUND));
@@ -157,6 +225,50 @@ public class AuthService {
         if (otpCacheService.isResendCoolingDown(email)) {
             throw new BusinessException(MessageCode.OTP_RESEND_TOO_SOON, HttpStatus.TOO_MANY_REQUESTS);
         }
+        if (otpCacheService.isLocked(email)) {
+            AuthAttemptState state = AuthAttemptState.locked(0, 5, otpCacheService.getLockRemainingSeconds(email));
+            throw attemptException(MessageCode.OTP_ATTEMPTS_EXCEEDED, HttpStatus.TOO_MANY_REQUESTS, state);
+        }
+
+        String otp = generateOtp();
+        otpCacheService.putOtp(email, otp);
+        sendOtpEmail(user, otp);
+    }
+
+    public void resendForgotPasswordOtp(ForgotPasswordResendOtpRequest request) {
+        String clientIp = resolveClientIp();
+        if (StringUtils.hasText(clientIp) && !otpCacheService.checkIpRateLimit(clientIp, "resend_forgot_otp")) {
+            throw new BusinessException(MessageCode.IP_RATE_LIMIT_EXCEEDED, HttpStatus.TOO_MANY_REQUESTS);
+        }
+
+        String email = request.getEmail().trim().toLowerCase();
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new BusinessException(MessageCode.USER_NOT_FOUND, HttpStatus.NOT_FOUND));
+
+        if (user.getStatus() != UserStatus.ACTIVE) {
+            throw new BusinessException(MessageCode.USER_INACTIVE, HttpStatus.FORBIDDEN);
+        }
+
+        if (!otpCacheService.hasOtp(email)) {
+            throw new BusinessException(MessageCode.OTP_SESSION_NOT_FOUND, HttpStatus.BAD_REQUEST);
+        }
+
+        if (otpCacheService.isSpamLocked(email)) {
+            throw new BusinessException(MessageCode.OTP_RESEND_SPAM_BLOCKED, HttpStatus.TOO_MANY_REQUESTS);
+        }
+
+        if (otpCacheService.isResendCoolingDown(email)) {
+            throw new BusinessException(MessageCode.OTP_RESEND_TOO_SOON, HttpStatus.TOO_MANY_REQUESTS);
+        }
+
+        OtpCacheService.ResendCheckResult resendResult = otpCacheService.checkAndRecordResend(email);
+        if (resendResult == OtpCacheService.ResendCheckResult.SPAM_BLOCKED) {
+            throw new BusinessException(MessageCode.OTP_RESEND_SPAM_BLOCKED, HttpStatus.TOO_MANY_REQUESTS);
+        }
+        if (resendResult == OtpCacheService.ResendCheckResult.LIMIT_EXCEEDED) {
+            throw new BusinessException(MessageCode.OTP_RESEND_LIMIT_EXCEEDED, HttpStatus.TOO_MANY_REQUESTS);
+        }
+
         if (otpCacheService.isLocked(email)) {
             AuthAttemptState state = AuthAttemptState.locked(0, 5, otpCacheService.getLockRemainingSeconds(email));
             throw attemptException(MessageCode.OTP_ATTEMPTS_EXCEEDED, HttpStatus.TOO_MANY_REQUESTS, state);
@@ -213,7 +325,12 @@ public class AuthService {
         }
 
         Duration remainingTtl = JwtUtils.getRemainingTtl(token, secret);
-        tokenBlacklistService.blacklist(token, remainingTtl);
+        String jti = JwtUtils.getJti(token, secret);
+        if (StringUtils.hasText(jti)) {
+            tokenBlacklistService.blacklistJti(jti, remainingTtl);
+        } else {
+            tokenBlacklistService.blacklist(token, remainingTtl);
+        }
     }
 
     private String generateOtp() {

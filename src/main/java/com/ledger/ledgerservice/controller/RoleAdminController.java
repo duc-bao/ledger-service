@@ -17,6 +17,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
+import com.ledger.ledgerservice.util.PageableUtil;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -46,8 +48,8 @@ public class RoleAdminController {
     @Operation(summary = "Search roles")
     public ResponseEntity<BaseResponse<Page<RoleResponse>>> searchRoles(@RequestParam(required = false) String keyword,
                                                                         @RequestParam(required = false) RecordStatus status,
-                                                                        Pageable pageable) {
-        Page<RoleResponse> data = roleAdminService.searchRoles(keyword, status, pageable);
+                                                                        @PageableDefault(size = 20) Pageable pageable) {
+        Page<RoleResponse> data = roleAdminService.searchRoles(keyword, status, PageableUtil.clamp(pageable));
         return responseHelper.ok(MessageCode.SUCCESS, data, HttpStatus.OK);
     }
 

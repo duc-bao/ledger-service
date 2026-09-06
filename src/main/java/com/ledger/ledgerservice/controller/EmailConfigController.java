@@ -47,6 +47,13 @@ public class EmailConfigController {
         return responseHelper.ok(MessageCode.SUCCESS, response, HttpStatus.OK);
     }
 
+    @PostMapping("/test-connection")
+    @Operation(summary = "Test SMTP connection", description = "Verify that SMTP server credentials and connectivity are valid before saving")
+    public ResponseEntity<BaseResponse<String>> testConnection(@Valid @RequestBody CreateEmailConfigRequest request) {
+        emailConfigService.testConnection(request);
+        return responseHelper.ok(MessageCode.EMAIL_GATEWAY_SUCCESS, "Connection successful", HttpStatus.OK);
+    }
+
     @PostMapping
     @Operation(summary = "Create email config")
     public ResponseEntity<BaseResponse<EmailConfigResponse>> createConfig(@Valid @RequestBody CreateEmailConfigRequest request) {

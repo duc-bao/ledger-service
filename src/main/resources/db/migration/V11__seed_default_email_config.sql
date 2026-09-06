@@ -1,4 +1,4 @@
-﻿INSERT INTO sys_email_configs (
+INSERT INTO sys_email_configs (
     id,
     created_at,
     created_by,
@@ -45,7 +45,7 @@ VALUES (
     'smtp.gmail.com',
     587,
     'truongducbao290402@gmail.com',
-    'tfcr josj npro npsy',
+    'CHANGE_ME_SMTP_PASSWORD',
     'truongducbao290402@gmail.com',
     'Ledger Service',
     'truongducbao290402@gmail.com',

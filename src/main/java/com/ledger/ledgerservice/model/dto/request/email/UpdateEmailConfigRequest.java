@@ -8,11 +8,14 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import lombok.ToString;
+
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@ToString
 public class UpdateEmailConfigRequest {
 
     private String name;
@@ -27,6 +30,7 @@ public class UpdateEmailConfigRequest {
 
     private String username;
 
+    @ToString.Exclude
     private String password;
 
     private String fromAddress;

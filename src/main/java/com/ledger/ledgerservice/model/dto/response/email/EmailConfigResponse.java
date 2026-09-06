@@ -23,7 +23,6 @@ public class EmailConfigResponse {
     private Integer port;
     private String username;
     private String fromAddress;
-    private String password;
     private String fromName;
     private String replyTo;
     private String protocol;

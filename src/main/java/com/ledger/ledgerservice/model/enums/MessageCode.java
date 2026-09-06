@@ -43,6 +43,10 @@ public enum MessageCode {
     USER_EMAIL_REQUIRED("USER_EMAIL_REQUIRED", "error.auth.userEmailRequired"),
     USER_INACTIVE("FORBIDDEN", "error.auth.userInactive"),
     OTP_RESEND_TOO_SOON("TOO_MANY_REQUESTS", "error.otp.resendTooSoon"),
+    OTP_RESEND_LIMIT_EXCEEDED("TOO_MANY_REQUESTS", "error.otp.resendLimitExceeded"),
+    OTP_RESEND_SPAM_BLOCKED("TOO_MANY_REQUESTS", "error.otp.resendSpamBlocked"),
+    OTP_SESSION_NOT_FOUND("BAD_REQUEST", "error.otp.sessionNotFound"),
+    IP_RATE_LIMIT_EXCEEDED("TOO_MANY_REQUESTS", "error.auth.ipRateLimitExceeded"),
     GROUP_NOT_FOUND("GROUP_NOT_FOUND", "error.access.groupNotFound"),
     GROUP_CODE_EXISTS("EXISTED", "error.access.groupCodeExists"),
     GROUP_NAME_EXISTS("EXISTED", "error.access.groupNameExists"),
@@ -101,6 +105,7 @@ public enum MessageCode {
     EMAIL_GATEWAY_NOT_CONFIGURED("INVALID", "email.gateway.notfound"),
     EMAIL_GATEWAY_SUCCESS("SUCESS", "email.gateway.success"),
     EMAIL_GATEWAY_EXISTS("EXISTED", "email.gateway.exists"),
+    EMAIL_GATEWAY_CONNECTION_FAILED("CONNECTION_FAILED", "email.gateway.connectionFailed"),
 
     // ===== HTTP STATUS =====
     BAD_REQUEST("BAD_REQUEST", "error.http.badRequest"),

@@ -35,6 +35,7 @@ public class CreateEmailConfigRequest {
     private String username;
 
     @NotBlank
+    @ToString.Exclude
     private String password;
 
     @NotBlank

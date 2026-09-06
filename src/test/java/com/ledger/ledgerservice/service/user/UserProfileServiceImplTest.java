@@ -43,14 +43,29 @@ class UserProfileServiceImplTest {
 
     @Test
     void updateTwoFactorPersistsPreferenceOnCurrentUser() {
-        User user = User.builder().id("user-1").username("user1").status(UserStatus.ACTIVE).twoFactorEnabled(true).build();
+        User user = User.builder().id("user-1").username("user1").password("encodedPass").status(UserStatus.ACTIVE).twoFactorEnabled(true).build();
         UpdateTwoFactorRequest request = new UpdateTwoFactorRequest();
         request.setEnabled(false);
+        request.setPassword("correctPassword");
         when(userRepository.findByUsername("user1")).thenReturn(Optional.of(user));
+        when(passwordEncoder.matches("correctPassword", "encodedPass")).thenReturn(true);
         when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         UserProfileResponse response = service.updateTwoFactor(request);
 
         assertFalse(response.getTwoFactorEnabled());
+    }
+
+    @Test
+    void updateTwoFactorThrowsExceptionWhenDisablingWithoutPassword() {
+        User user = User.builder().id("user-1").username("user1").password("encodedPass").status(UserStatus.ACTIVE).twoFactorEnabled(true).build();
+        UpdateTwoFactorRequest request = new UpdateTwoFactorRequest();
+        request.setEnabled(false);
+        request.setPassword("wrongPassword");
+        when(userRepository.findByUsername("user1")).thenReturn(Optional.of(user));
+        when(passwordEncoder.matches("wrongPassword", "encodedPass")).thenReturn(false);
+
+        org.junit.jupiter.api.Assertions.assertThrows(com.ledger.ledgerservice.exception.BusinessException.class,
+                () -> service.updateTwoFactor(request));
     }
 }

@@ -16,6 +16,8 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
+import org.springframework.core.io.FileSystemResource;
+import org.springframework.core.io.Resource;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
@@ -68,7 +70,7 @@ public class ExcelServiceImpl implements ExcelService {
             return ExcelUploadResponse.builder()
                     .originalFileName(originalName)
                     .storedFileName(storedFileName)
-                    .storedPath(targetFile.toAbsolutePath().toString())
+                    .storedPath("temp/" + storedFileName)
                     .size(file.getSize())
                     .build();
         } catch (IOException ex) {
@@ -128,9 +130,12 @@ public class ExcelServiceImpl implements ExcelService {
             if (!Files.exists(filePath)) {
                 throw new BusinessException(MessageCode.NOT_FOUND, HttpStatus.NOT_FOUND);
             }
+            long size = Files.size(filePath);
+            Resource resource = new FileSystemResource(filePath.toFile());
             return ExportFilePayload.builder()
                     .fileName(job.getFileName())
-                    .content(Files.readAllBytes(filePath))
+                    .resource(resource)
+                    .contentLength(size)
                     .build();
         } catch (IOException ex) {
             log.error("Cannot read exported file. jobId={}", jobId, ex);

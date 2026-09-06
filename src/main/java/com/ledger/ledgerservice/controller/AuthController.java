@@ -2,8 +2,10 @@ package com.ledger.ledgerservice.controller;
 
 import com.ledger.ledgerservice.model.dto.request.LoginRequestOtpRequest;
 import com.ledger.ledgerservice.model.dto.request.LoginVerifyOtpRequest;
+import com.ledger.ledgerservice.model.dto.request.LoginResendOtpRequest;
 import com.ledger.ledgerservice.model.dto.request.ForgotPasswordRequestOtpRequest;
 import com.ledger.ledgerservice.model.dto.request.ForgotPasswordVerifyOtpRequest;
+import com.ledger.ledgerservice.model.dto.request.ForgotPasswordResendOtpRequest;
 import com.ledger.ledgerservice.model.dto.response.BaseResponse;
 import com.ledger.ledgerservice.model.dto.response.LoginTokenResponse;
 import com.ledger.ledgerservice.model.enums.MessageCode;
@@ -44,6 +46,17 @@ public class AuthController {
         return responseHelper.ok(code, data, HttpStatus.OK);
     }
 
+    @PostMapping("/resend-otp")
+    @Operation(summary = "Resend login OTP", description = "Resend a new login OTP, invalidating the previous OTP")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "New OTP sent successfully"),
+            @ApiResponse(responseCode = "429", description = "Too many resend requests")
+    })
+    public ResponseEntity<BaseResponse<Object>> resendLoginOtp(@Valid @RequestBody LoginResendOtpRequest request) {
+        authService.resendLoginOtp(request);
+        return responseHelper.ok(MessageCode.OTP_SENT, null, HttpStatus.OK);
+    }
+
     @PostMapping("/verify-otp")
     @Operation(summary = "Verify OTP", description = "Verify the OTP and return an access token to call authenticated APIs")
     @ApiResponses(value = {
@@ -64,6 +77,18 @@ public class AuthController {
     public ResponseEntity<BaseResponse<Object>> requestForgotPasswordOtp(
             @Valid @RequestBody ForgotPasswordRequestOtpRequest request) {
         authService.requestForgotPasswordOtp(request);
+        return responseHelper.ok(MessageCode.OTP_SENT, null, HttpStatus.OK);
+    }
+
+    @PostMapping("/forgot-password/resend-otp")
+    @Operation(summary = "Resend forgot password OTP", description = "Resend a new forgot password OTP to email, invalidating previous OTP")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "New OTP sent successfully"),
+            @ApiResponse(responseCode = "429", description = "Too many resend requests")
+    })
+    public ResponseEntity<BaseResponse<Object>> resendForgotPasswordOtp(
+            @Valid @RequestBody ForgotPasswordResendOtpRequest request) {
+        authService.resendForgotPasswordOtp(request);
         return responseHelper.ok(MessageCode.OTP_SENT, null, HttpStatus.OK);
     }
 

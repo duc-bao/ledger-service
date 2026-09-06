@@ -20,12 +20,17 @@ import java.io.IOException;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.UUID;
+import java.util.regex.Pattern;
 
 @Component
 @Order(Ordered.HIGHEST_PRECEDENCE)
 @RequiredArgsConstructor
 @Slf4j
 public class HeaderFilter extends OncePerRequestFilter {
+
+    private static final Pattern REQUEST_ID_PATTERN = Pattern.compile("^[a-zA-Z0-9_-]{1,64}$");
+    private static final Pattern SENSITIVE_QUERY_PATTERN =
+            Pattern.compile("(?i)(password|token|secret|otp|access_token|refresh_token|credential)=([^&]*)");
 
     private final ActionLogService actionLogService;
 
@@ -43,7 +48,7 @@ public class HeaderFilter extends OncePerRequestFilter {
                 .requestIp(resolveIp(request))
                 .requestMethod(request.getMethod())
                 .requestUrl(request.getRequestURL() != null ? request.getRequestURL().toString() : null)
-                .requestQuery(request.getQueryString())
+                .requestQuery(sanitizeQueryString(request.getQueryString()))
                 .requestUrlPath(request.getRequestURI())
                 .userAgent(request.getHeader("User-Agent"))
                 .service("ledger-service")
@@ -70,7 +75,17 @@ public class HeaderFilter extends OncePerRequestFilter {
     }
 
     private String resolveRequestId(String requestIdHeader) {
-        return StringUtils.hasText(requestIdHeader) ? requestIdHeader : UUID.randomUUID().toString();
+        if (StringUtils.hasText(requestIdHeader) && REQUEST_ID_PATTERN.matcher(requestIdHeader.trim()).matches()) {
+            return requestIdHeader.trim();
+        }
+        return UUID.randomUUID().toString();
+    }
+
+    private String sanitizeQueryString(String queryString) {
+        if (!StringUtils.hasText(queryString)) {
+            return null;
+        }
+        return SENSITIVE_QUERY_PATTERN.matcher(queryString).replaceAll("$1=******");
     }
 
     private String resolveIp(HttpServletRequest request) {

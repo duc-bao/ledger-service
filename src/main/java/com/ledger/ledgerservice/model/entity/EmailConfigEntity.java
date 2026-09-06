@@ -1,7 +1,9 @@
 package com.ledger.ledgerservice.model.entity;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.ledger.ledgerservice.model.converter.EncryptedStringConverter;
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
@@ -45,6 +47,7 @@ public class EmailConfigEntity extends EntityBase {
     @Column(name = "username", length = 255, nullable = false)
     private String username;
 
+    @Convert(converter = EncryptedStringConverter.class)
     @Column(name = "password", length = 500, nullable = false)
     private String password;
 

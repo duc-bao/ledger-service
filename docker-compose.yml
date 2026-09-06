@@ -46,6 +46,13 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: 6379
       MINIO_ENDPOINT: http://minio:9000
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-prod}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-suW1MFuErxKmhelwTpwhw6QaAoqZMRb64y81cR9rYeA}
+      JWT_REFRESH_KEY: ${JWT_REFRESH_KEY:-WDzqnd5bXrUvjuzzLagE0Vc5BppnVvKVv3rrie5xkmk}
+      APP_SUPER_USER: ${APP_SUPER_USER:-admin}
+      APP_SUPER_PASSWORD: ${APP_SUPER_PASSWORD:-123456a@}
+      CORS_ALLOWED_ORIGIN_1: ${CORS_ALLOWED_ORIGIN_1:-https://ob-consent.savyint.com}
+      CORS_ALLOWED_ORIGIN_2: ${CORS_ALLOWED_ORIGIN_2:-https://iam-uat.savyint.com}
     depends_on:
       postgres:
         condition: service_healthy

@@ -118,3 +118,24 @@ No shared commit history is available yet on `master`, so adopt this convention 
 - Do not commit real secrets. Values in `application.yaml` should be treated as local defaults only.
 - Prefer environment variables for credentials (`SPRING_DATASOURCE_*`, Redis/JWT settings).
 - Validate new endpoints against existing auth filters and permission checks before merge.
+
+## Agent Permission & Safety Policy
+
+### 1. Quyền được phép tự động thực thi (No approval needed)
+- Đọc, viết và sửa đổi code, tài liệu trong workspace.
+- Các lệnh xem trạng thái và so sánh Git an toàn: `git status`, `git diff`, `git log`, `git branch`.
+- Chạy lệnh build và test tự động: `./gradlew test`, `./gradlew build`, `mvn test`, v.v.
+- Chạy các công cụ MCP Database: thực thi câu lệnh `SELECT`, câu lệnh `INSERT`/`UPDATE` dữ liệu kiểm thử (test/dev data) mà không cần hỏi duyệt từng bước.
+
+### 2. Hành vi BẮT BUỘC phải hỏi ý kiến và được User chấp thuận (Explicit User Approval Required)
+- **Xóa file (Delete files)**: Tuyệt đối KHÔNG tự ý xóa file mã nguồn, file cấu hình hoặc bất kỳ file nào trong workspace (qua lệnh shell như `rm`, `del`, `Remove-Item` hay git tools). Phải hỏi và nêu rõ lý do trước khi thực hiện.
+- **Merge / Rebase code**: Tuyệt đối KHÔNG tự ý chạy `git merge`, `git rebase` giữa các branch.
+- **Push code**: Tuyệt đối KHÔNG chạy `git push` lên bất kỳ remote nào.
+
+### 3. Quy trình kết thúc tác vụ (Completion & Final Review)
+- Sau khi hoàn thành code và chạy test thành công: Agent **phải dừng lại**.
+- Tổng hợp kết quả và xuất báo cáo/Walkthrough chi tiết:
+  + Danh sách các file đã thay đổi / tạo mới.
+  + Kết quả chạy test tự động (pass/fail logs).
+  + Trạng thái `git status` và tóm tắt diff.
+- Chờ User trực tiếp review, nghiệm thu và quyết định commit/merge/push.

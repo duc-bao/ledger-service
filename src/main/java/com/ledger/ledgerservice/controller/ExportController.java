@@ -14,6 +14,8 @@ import lombok.RequiredArgsConstructor;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
+import com.ledger.ledgerservice.util.PageableUtil;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -68,8 +70,8 @@ public class ExportController {
     public ResponseEntity<BaseResponse<Page<ExportJobResponse>>> searchJobs(
             @RequestParam(required = false) String reportType,
             @RequestParam(required = false) ExcelExportStatus status,
-            @ParameterObject Pageable pageable) {
-        Page<ExportJobResponse> data = jobService.searchJobs(reportType, status, pageable);
+            @ParameterObject @PageableDefault(size = 20) Pageable pageable) {
+        Page<ExportJobResponse> data = jobService.searchJobs(reportType, status, PageableUtil.clamp(pageable));
         return responseHelper.ok(MessageCode.SUCCESS, data);
     }
 

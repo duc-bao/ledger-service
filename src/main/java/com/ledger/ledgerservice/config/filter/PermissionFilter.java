@@ -62,7 +62,8 @@ public class PermissionFilter extends OncePerRequestFilter {
 
         String userId = resolveUserId(authentication);
         if (!StringUtils.hasText(userId)) {
-            filterChain.doFilter(request, response);
+            log.warn("Authenticated request has no valid userId. Access denied for method={} URI={}", request.getMethod(), request.getRequestURI());
+            forbidden(response, MessageCode.ACCESS_DENIED);
             return;
         }
 

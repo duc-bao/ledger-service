@@ -20,6 +20,8 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
+import com.ledger.ledgerservice.util.PageableUtil;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -115,9 +117,9 @@ public class PermissionController {
     })
     public ResponseEntity<BaseResponse<PageResponse<PermissionResponse>>> search(
             @ParameterObject PermissionSearchRequest request,
-            @ParameterObject Pageable pageable
+            @ParameterObject @PageableDefault(size = 20) Pageable pageable
     ) {
-        return responseHelper.ok(MessageCode.SUCCESS, permissionService.search(request, pageable));
+        return responseHelper.ok(MessageCode.SUCCESS, permissionService.search(request, PageableUtil.clamp(pageable)));
     }
 
     @PatchMapping("/{permissionId}/status")

@@ -170,6 +170,79 @@ class AuthServiceTest {
         assertNotNull(exception.getData());
     }
 
+    @Test
+    void resendLoginOtpWhenValidGeneratesNewOtpAndSendsEmail() {
+        com.ledger.ledgerservice.model.dto.request.LoginResendOtpRequest request =
+                new com.ledger.ledgerservice.model.dto.request.LoginResendOtpRequest("user1");
+        User user = activeUser();
+        when(userRepository.findByUsername("user1")).thenReturn(Optional.of(user));
+        when(otpCacheService.hasOtp("user1")).thenReturn(true);
+        when(otpCacheService.isSpamLocked("user1")).thenReturn(false);
+        when(otpCacheService.isResendCoolingDown("user1")).thenReturn(false);
+        when(otpCacheService.checkAndRecordResend("user1")).thenReturn(OtpCacheService.ResendCheckResult.ALLOWED);
+
+        authService.resendLoginOtp(request);
+
+        verify(otpCacheService).putOtp(eq("user1"), anyString());
+        verify(emailTemplateService).sendAsync(any());
+    }
+
+    @Test
+    void resendLoginOtpWhenNoPriorOtpThrowsSessionNotFound() {
+        com.ledger.ledgerservice.model.dto.request.LoginResendOtpRequest request =
+                new com.ledger.ledgerservice.model.dto.request.LoginResendOtpRequest("user1");
+        User user = activeUser();
+        when(userRepository.findByUsername("user1")).thenReturn(Optional.of(user));
+        when(otpCacheService.hasOtp("user1")).thenReturn(false);
+
+        BusinessException exception = assertThrows(BusinessException.class, () -> authService.resendLoginOtp(request));
+        assertEquals(MessageCode.OTP_SESSION_NOT_FOUND.getCode(), exception.getCode());
+        assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
+    }
+
+    @Test
+    void resendLoginOtpWhenTwoFactorDisabledThrowsBadRequest() {
+        com.ledger.ledgerservice.model.dto.request.LoginResendOtpRequest request =
+                new com.ledger.ledgerservice.model.dto.request.LoginResendOtpRequest("user1");
+        User user = activeUser();
+        user.setTwoFactorEnabled(false);
+        when(userRepository.findByUsername("user1")).thenReturn(Optional.of(user));
+
+        BusinessException exception = assertThrows(BusinessException.class, () -> authService.resendLoginOtp(request));
+        assertEquals(MessageCode.INPUT_INVALID.getCode(), exception.getCode());
+        assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
+    }
+
+    @Test
+    void resendLoginOtpWhenLimitExceededThrowsTooManyRequests() {
+        com.ledger.ledgerservice.model.dto.request.LoginResendOtpRequest request =
+                new com.ledger.ledgerservice.model.dto.request.LoginResendOtpRequest("user1");
+        User user = activeUser();
+        when(userRepository.findByUsername("user1")).thenReturn(Optional.of(user));
+        when(otpCacheService.hasOtp("user1")).thenReturn(true);
+        when(otpCacheService.isSpamLocked("user1")).thenReturn(false);
+        when(otpCacheService.isResendCoolingDown("user1")).thenReturn(false);
+        when(otpCacheService.checkAndRecordResend("user1")).thenReturn(OtpCacheService.ResendCheckResult.LIMIT_EXCEEDED);
+
+        BusinessException exception = assertThrows(BusinessException.class, () -> authService.resendLoginOtp(request));
+        assertEquals(MessageCode.OTP_RESEND_LIMIT_EXCEEDED.getCode(), exception.getCode());
+        assertEquals(HttpStatus.TOO_MANY_REQUESTS, exception.getStatusCode());
+    }
+
+    @Test
+    void resendLoginOtpWhenSpamBlockedThrowsSpamBlocked() {
+        com.ledger.ledgerservice.model.dto.request.LoginResendOtpRequest request =
+                new com.ledger.ledgerservice.model.dto.request.LoginResendOtpRequest("user1");
+        User user = activeUser();
+        when(userRepository.findByUsername("user1")).thenReturn(Optional.of(user));
+        when(otpCacheService.hasOtp("user1")).thenReturn(true);
+        when(otpCacheService.isSpamLocked("user1")).thenReturn(true);
+
+        BusinessException exception = assertThrows(BusinessException.class, () -> authService.resendLoginOtp(request));
+        assertEquals(MessageCode.OTP_RESEND_SPAM_BLOCKED.getCode(), exception.getCode());
+        assertEquals(HttpStatus.TOO_MANY_REQUESTS, exception.getStatusCode());
+    }
+
     private User activeUser() {
         return User.builder()
                 .id("user-id")
