@@ -37,7 +37,19 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import com.ledger.ledgerservice.model.dto.request.DeleteUserRequest;
+import com.ledger.ledgerservice.model.dto.request.email.EmailSendRequest;
+import com.ledger.ledgerservice.model.dto.response.ResetPasswordResponse;
+import com.ledger.ledgerservice.model.entity.DepartmentEntity;
+import com.ledger.ledgerservice.repository.DepartmentRepository;
+import com.ledger.ledgerservice.service.email.EmailConfigService;
+import com.ledger.ledgerservice.service.email.EmailTemplateService;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import java.util.HashMap;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class UserAdminServiceImpl implements UserAdminService {
@@ -50,6 +62,13 @@ public class UserAdminServiceImpl implements UserAdminService {
     private final GroupRepository groupRepository;
     private final DepartmentUserRepository departmentUserRepository;
     private final DepartmentUserRoleRepository departmentUserRoleRepository;
+    private final DepartmentRepository departmentRepository;
+    private final PasswordEncoder passwordEncoder;
+    private final EmailTemplateService emailTemplateService;
+    private final EmailConfigService emailConfigService;
+
+    @Value("${app-setting.resetPass:123456a@}")
+    private String defaultResetPassword;
 
     @Override
     @Transactional(readOnly = true)
@@ -73,8 +92,13 @@ public class UserAdminServiceImpl implements UserAdminService {
                 .map(UserGroup::getGroupId)
                 .collect(Collectors.toSet()));
 
+        Map<String, DepartmentUserEntity> deptUserByUserId = mapDepartmentUsers(users);
+        Map<String, DepartmentEntity> deptById = mapDepartments(deptUserByUserId.values().stream()
+                .map(DepartmentUserEntity::getDepartmentId)
+                .collect(Collectors.toSet()));
+
         List<AdminUserItemResponse> items = users.stream()
-                .map(user -> toListItem(user, userGroupByUserId.get(user.getId()), groupById))
+                .map(user -> toListItem(user, userGroupByUserId.get(user.getId()), groupById, deptUserByUserId.get(user.getId()), deptById))
                 .toList();
 
         return new PageImpl<>(items, result.getPageable(), result.getTotalElements());
@@ -91,6 +115,14 @@ public class UserAdminServiceImpl implements UserAdminService {
                 .orElse(null);
         Group group = userGroup == null ? null : groupRepository.findById(userGroup.getGroupId()).orElse(null);
 
+        DepartmentUserEntity deptUser = departmentUserRepository.findByUserIdAndStatus(userId, RecordStatus.ACTIVE)
+                .stream()
+                .filter(du -> Boolean.TRUE.equals(du.getIsPrimary()))
+                .findFirst()
+                .or(() -> departmentUserRepository.findByUserIdAndStatus(userId, RecordStatus.ACTIVE).stream().findFirst())
+                .orElse(null);
+        DepartmentEntity dept = deptUser == null ? null : departmentRepository.findById(deptUser.getDepartmentId()).orElse(null);
+
         return AdminUserDetailResponse.builder()
                 .id(user.getId())
                 .username(user.getUsername())
@@ -104,10 +136,17 @@ public class UserAdminServiceImpl implements UserAdminService {
                 .groupId(group != null ? group.getId() : null)
                 .groupCode(group != null ? group.getCode() : null)
                 .groupName(group != null ? group.getName() : null)
+                .roleId(group != null ? group.getId() : null)
+                .roleCode(group != null ? group.getCode() : null)
+                .roleName(group != null ? group.getName() : null)
+                .departmentId(dept != null ? dept.getId() : null)
+                .departmentName(dept != null ? dept.getName() : null)
+                .lastLoginAt(user.getLastLoginAt())
                 .createdAt(user.getCreatedAt())
                 .createdBy(user.getCreatedBy())
                 .updatedAt(user.getUpdatedAt())
                 .updatedBy(user.getUpdatedBy())
+                .deleteReason(user.getDeleteReason())
                 .build();
     }
 
@@ -185,18 +224,25 @@ public class UserAdminServiceImpl implements UserAdminService {
 
     @Override
     @Transactional
-    public void deleteUser(String userId) {
+    public void deleteUser(String userId, DeleteUserRequest request) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new BusinessException(MessageCode.USER_NOT_FOUND, HttpStatus.NOT_FOUND));
         validateNotSelf(user);
         validateNotSuperAdmin(userId);
 
-        if (user.getStatus() == UserStatus.INACTIVE) {
-            return;
+        String actor = resolveActor();
+        User adminUser = userRepository.findByUsername(actor)
+                .orElseThrow(() -> new BusinessException(MessageCode.UNAUTHORIZED, HttpStatus.UNAUTHORIZED));
+        if (request == null || !StringUtils.hasText(request.getAdminPassword()) ||
+                !passwordEncoder.matches(request.getAdminPassword(), adminUser.getPassword())) {
+            throw new BusinessException(MessageCode.ADMIN_PASSWORD_INVALID, HttpStatus.BAD_REQUEST);
         }
 
-        user.setStatus(UserStatus.INACTIVE);
-        user.setLockedUntil(null);
+        if (user.getStatus() != UserStatus.INACTIVE) {
+            throw new BusinessException(MessageCode.CANNOT_DELETE_ACTIVE_USER, HttpStatus.BAD_REQUEST);
+        }
+
+        user.setDeleteReason(request.getDeleteReason());
         touchAudit(user);
         userRepository.save(user);
 
@@ -225,6 +271,43 @@ public class UserAdminServiceImpl implements UserAdminService {
         }
     }
 
+    @Override
+    @Transactional
+    public ResetPasswordResponse resetPassword(String userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new BusinessException(MessageCode.USER_NOT_FOUND, HttpStatus.NOT_FOUND));
+
+        String rawPassword = StringUtils.hasText(defaultResetPassword) ? defaultResetPassword.trim() : "123456a@";
+        user.setPassword(passwordEncoder.encode(rawPassword));
+        user.setRequireChange(true);
+        user.setLastPasswordChangedAt(LocalDateTime.now());
+        touchAudit(user);
+        userRepository.save(user);
+
+        boolean emailSent = false;
+        if (StringUtils.hasText(user.getEmail()) && emailConfigService != null && emailTemplateService != null) {
+            try {
+                if (emailConfigService.getActiveConfig() != null) {
+                    EmailSendRequest emailReq = EmailSendRequest.builder()
+                            .to(user.getEmail())
+                            .subject("Thông báo đặt lại mật khẩu tạm thời")
+                            .htmlBody("<p>Xin chào " + (StringUtils.hasText(user.getFullName()) ? user.getFullName() : user.getUsername()) + ",</p><p>Mật khẩu tạm thời cho tài khoản <b>" + user.getUsername() + "</b> của bạn là: <b>" + rawPassword + "</b>. Vui lòng đổi mật khẩu sau khi đăng nhập.</p>")
+                            .build();
+                    emailTemplateService.sendAsync(emailReq);
+                    emailSent = true;
+                }
+            } catch (Exception e) {
+                log.warn("Failed to send reset password email to {}: {}", user.getEmail(), e.getMessage());
+            }
+        }
+
+        return ResetPasswordResponse.builder()
+                .userId(userId)
+                .emailSent(emailSent)
+                .temporaryPassword(rawPassword)
+                .build();
+    }
+
     private Map<String, UserGroup> mapUserGroups(List<User> users) {
         Set<String> userIds = users.stream().map(User::getId).collect(Collectors.toSet());
         if (userIds.isEmpty()) {
@@ -245,8 +328,32 @@ public class UserAdminServiceImpl implements UserAdminService {
                 .collect(Collectors.toMap(Group::getId, Function.identity()));
     }
 
-    private AdminUserItemResponse toListItem(User user, UserGroup userGroup, Map<String, Group> groupById) {
+    private Map<String, DepartmentUserEntity> mapDepartmentUsers(List<User> users) {
+        Set<String> userIds = users.stream().map(User::getId).collect(Collectors.toSet());
+        if (userIds.isEmpty()) {
+            return Map.of();
+        }
+        Map<String, DepartmentUserEntity> result = new LinkedHashMap<>();
+        for (DepartmentUserEntity deptUser : departmentUserRepository.findByUserIdInAndStatus(userIds, RecordStatus.ACTIVE)) {
+            if (Boolean.TRUE.equals(deptUser.getIsPrimary()) || !result.containsKey(deptUser.getUserId())) {
+                result.put(deptUser.getUserId(), deptUser);
+            }
+        }
+        return result;
+    }
+
+    private Map<String, DepartmentEntity> mapDepartments(Set<String> departmentIds) {
+        if (departmentIds.isEmpty()) {
+            return Map.of();
+        }
+        return departmentRepository.findAllById(departmentIds).stream()
+                .collect(Collectors.toMap(DepartmentEntity::getId, Function.identity()));
+    }
+
+    private AdminUserItemResponse toListItem(User user, UserGroup userGroup, Map<String, Group> groupById,
+                                            DepartmentUserEntity deptUser, Map<String, DepartmentEntity> departmentById) {
         Group group = userGroup == null ? null : groupById.get(userGroup.getGroupId());
+        DepartmentEntity dept = deptUser == null ? null : departmentById.get(deptUser.getDepartmentId());
         return AdminUserItemResponse.builder()
                 .id(user.getId())
                 .username(user.getUsername())
@@ -260,6 +367,11 @@ public class UserAdminServiceImpl implements UserAdminService {
                 .groupId(group != null ? group.getId() : null)
                 .groupCode(group != null ? group.getCode() : null)
                 .groupName(group != null ? group.getName() : null)
+                .roleId(group != null ? group.getId() : null)
+                .roleCode(group != null ? group.getCode() : null)
+                .roleName(group != null ? group.getName() : null)
+                .departmentId(dept != null ? dept.getId() : null)
+                .departmentName(dept != null ? dept.getName() : null)
                 .createdAt(user.getCreatedAt())
                 .updatedAt(user.getUpdatedAt())
                 .build();

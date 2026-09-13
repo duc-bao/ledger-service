@@ -14,5 +14,6 @@ public class RoleResponse {
     private Boolean isDefault;
     private Boolean isSuperAdmin;
     private Integer sortOrder;
+    private Long userCount;
     private RecordStatus status;
 }

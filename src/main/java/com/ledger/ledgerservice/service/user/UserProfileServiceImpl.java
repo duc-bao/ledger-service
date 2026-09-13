@@ -14,6 +14,15 @@ import com.ledger.ledgerservice.repository.UserRepository;
 import com.ledger.ledgerservice.config.properties.JwtProperties;
 import com.ledger.ledgerservice.service.auth.TokenBlacklistService;
 import com.ledger.ledgerservice.util.JwtUtils;
+import com.ledger.ledgerservice.model.entity.DepartmentEntity;
+import com.ledger.ledgerservice.model.entity.DepartmentUserEntity;
+import com.ledger.ledgerservice.model.entity.Group;
+import com.ledger.ledgerservice.model.entity.UserGroup;
+import com.ledger.ledgerservice.model.enums.RecordStatus;
+import com.ledger.ledgerservice.repository.DepartmentRepository;
+import com.ledger.ledgerservice.repository.DepartmentUserRepository;
+import com.ledger.ledgerservice.repository.GroupRepository;
+import com.ledger.ledgerservice.repository.UserGroupRepository;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -27,6 +36,7 @@ import org.springframework.util.StringUtils;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Service
 public class UserProfileServiceImpl implements UserProfileService {
@@ -35,9 +45,13 @@ public class UserProfileServiceImpl implements UserProfileService {
     private final TokenBlacklistService tokenBlacklistService;
     private final JwtProperties jwtProperties;
     private final HttpServletRequest httpServletRequest;
+    private final UserGroupRepository userGroupRepository;
+    private final GroupRepository groupRepository;
+    private final DepartmentUserRepository departmentUserRepository;
+    private final DepartmentRepository departmentRepository;
 
     public UserProfileServiceImpl(UserRepository userRepository, PasswordEncoder passwordEncoder) {
-        this(userRepository, passwordEncoder, null, null, null);
+        this(userRepository, passwordEncoder, null, null, null, null, null, null, null);
     }
 
     @Autowired
@@ -45,12 +59,20 @@ public class UserProfileServiceImpl implements UserProfileService {
                                   PasswordEncoder passwordEncoder,
                                   @Autowired(required = false) TokenBlacklistService tokenBlacklistService,
                                   @Autowired(required = false) JwtProperties jwtProperties,
-                                  @Autowired(required = false) HttpServletRequest httpServletRequest) {
+                                  @Autowired(required = false) HttpServletRequest httpServletRequest,
+                                  @Autowired(required = false) UserGroupRepository userGroupRepository,
+                                  @Autowired(required = false) GroupRepository groupRepository,
+                                  @Autowired(required = false) DepartmentUserRepository departmentUserRepository,
+                                  @Autowired(required = false) DepartmentRepository departmentRepository) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.tokenBlacklistService = tokenBlacklistService;
         this.jwtProperties = jwtProperties;
         this.httpServletRequest = httpServletRequest;
+        this.userGroupRepository = userGroupRepository;
+        this.groupRepository = groupRepository;
+        this.departmentUserRepository = departmentUserRepository;
+        this.departmentRepository = departmentRepository;
     }
 
     @Override
@@ -110,6 +132,7 @@ public class UserProfileServiceImpl implements UserProfileService {
 
         user.setPassword(passwordEncoder.encode(request.getNewPassword()));
         user.setRequireChange(false);
+        user.setLastPasswordChangedAt(LocalDateTime.now());
         user.setUpdatedBy(user.getUsername());
         user.setUpdatedAt(LocalDateTime.now());
         userRepository.save(user);
@@ -173,6 +196,34 @@ public class UserProfileServiceImpl implements UserProfileService {
     }
 
     private UserProfileResponse toResponse(User user) {
+        String roleId = null;
+        String roleCode = null;
+        String roleName = null;
+        if (userGroupRepository != null && groupRepository != null) {
+            List<UserGroup> userGroups = userGroupRepository.findByUserIdAndStatus(user.getId(), RecordStatus.ACTIVE);
+            if (!userGroups.isEmpty()) {
+                roleId = userGroups.get(0).getGroupId();
+                var groupOpt = groupRepository.findById(roleId);
+                if (groupOpt.isPresent()) {
+                    roleCode = groupOpt.get().getCode();
+                    roleName = groupOpt.get().getName();
+                }
+            }
+        }
+
+        String departmentId = null;
+        String departmentName = null;
+        if (departmentUserRepository != null && departmentRepository != null) {
+            List<DepartmentUserEntity> deptUsers = departmentUserRepository.findByUserIdAndStatus(user.getId(), RecordStatus.ACTIVE);
+            if (!deptUsers.isEmpty()) {
+                departmentId = deptUsers.get(0).getDepartmentId();
+                var deptOpt = departmentRepository.findById(departmentId);
+                if (deptOpt.isPresent()) {
+                    departmentName = deptOpt.get().getName();
+                }
+            }
+        }
+
         return UserProfileResponse.builder()
                 .id(user.getId())
                 .username(user.getUsername())
@@ -182,6 +233,14 @@ public class UserProfileServiceImpl implements UserProfileService {
                 .userType(user.getUserType())
                 .requireChange(user.getRequireChange())
                 .twoFactorEnabled(user.getTwoFactorEnabled())
+                .status(user.getStatus())
+                .roleId(roleId)
+                .roleCode(roleCode)
+                .roleName(roleName)
+                .departmentId(departmentId)
+                .departmentName(departmentName)
+                .lastLoginAt(user.getLastLoginAt())
+                .lastPasswordChangedAt(user.getLastPasswordChangedAt())
                 .createdAt(user.getCreatedAt())
                 .updatedAt(user.getUpdatedAt())
                 .build();

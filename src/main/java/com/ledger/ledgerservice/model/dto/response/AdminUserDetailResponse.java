@@ -21,8 +21,15 @@ public class AdminUserDetailResponse {
     private String groupId;
     private String groupCode;
     private String groupName;
+    private String roleId;
+    private String roleCode;
+    private String roleName;
+    private String departmentId;
+    private String departmentName;
+    private LocalDateTime lastLoginAt;
     private LocalDateTime createdAt;
     private String createdBy;
     private LocalDateTime updatedAt;
     private String updatedBy;
+    private String deleteReason;
 }

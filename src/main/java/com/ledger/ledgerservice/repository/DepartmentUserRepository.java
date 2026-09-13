@@ -39,6 +39,8 @@ public interface DepartmentUserRepository extends JpaRepository<DepartmentUserEn
 
     List<DepartmentUserEntity> findByUserIdAndStatus(String userId, RecordStatus status);
 
+    List<DepartmentUserEntity> findByUserIdInAndStatus(java.util.Collection<String> userIds, RecordStatus status);
+
     @Query("""
             SELECT DISTINCT du.departmentId FROM DepartmentUserEntity du
             WHERE du.userId = :userId

@@ -1,6 +1,7 @@
 package com.ledger.ledgerservice.service.security;
 
 import com.ledger.ledgerservice.model.dto.request.CreateRoleRequest;
+import com.ledger.ledgerservice.model.dto.request.DeleteRoleRequest;
 import com.ledger.ledgerservice.model.dto.request.UpdateRoleRequest;
 import com.ledger.ledgerservice.model.dto.response.RoleResponse;
 import com.ledger.ledgerservice.model.enums.RecordStatus;
@@ -14,5 +15,9 @@ public interface RoleAdminService {
 
     RoleResponse updateRole(String roleId, UpdateRoleRequest request);
 
-    void deleteRole(String roleId);
+    void deleteRole(String roleId, DeleteRoleRequest request);
+
+    default void deleteRole(String roleId) {
+        deleteRole(roleId, null);
+    }
 }

@@ -31,4 +31,10 @@ public class AdminCreateUserRequest {
     private Boolean requireChange;
 
     private String groupId;
+
+    private String roleId;
+
+    private String departmentId;
+
+    private com.ledger.ledgerservice.model.enums.UserStatus status;
 }

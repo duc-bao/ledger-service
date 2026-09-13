@@ -2,8 +2,10 @@ package com.ledger.ledgerservice.service.user;
 
 import com.ledger.ledgerservice.model.dto.request.AdminUserSearchRequest;
 import com.ledger.ledgerservice.model.dto.request.AdminUpdateUserRequest;
+import com.ledger.ledgerservice.model.dto.request.DeleteUserRequest;
 import com.ledger.ledgerservice.model.dto.response.AdminUserDetailResponse;
 import com.ledger.ledgerservice.model.dto.response.AdminUserItemResponse;
+import com.ledger.ledgerservice.model.dto.response.ResetPasswordResponse;
 import org.springframework.data.domain.Page;
 
 public interface UserAdminService {
@@ -17,5 +19,7 @@ public interface UserAdminService {
 
     void unlockUser(String userId);
 
-    void deleteUser(String userId);
+    void deleteUser(String userId, DeleteUserRequest request);
+
+    ResetPasswordResponse resetPassword(String userId);
 }

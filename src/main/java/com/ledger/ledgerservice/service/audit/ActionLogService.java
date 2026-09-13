@@ -31,6 +31,7 @@ public class ActionLogService {
 
     private final ActionLogRepository actionLogRepository;
     private final AuditLogMapper auditLogMapper;
+    private final com.ledger.ledgerservice.repository.UserRepository userRepository;
 
     @Transactional
     @Async("requestLogExecutor")
@@ -78,7 +79,39 @@ public class ActionLogService {
         Specification<ActionLog> specification = buildSpecification(request);
         Page<ActionLog> result = actionLogRepository.findAll(specification, PageRequest.of(page, size, Sort.by(direction, sortBy)));
 
-        return result.map(auditLogMapper::toItem);
+        List<String> usernames = result.getContent().stream()
+                .map(ActionLog::getUsername)
+                .filter(StringUtils::hasText)
+                .distinct()
+                .toList();
+
+        java.util.Map<String, String> fullNameMap = new java.util.HashMap<>();
+        if (!usernames.isEmpty()) {
+            userRepository.findByUsernameIn(usernames)
+                    .forEach(u -> fullNameMap.put(u.getUsername(), u.getFullName()));
+        }
+
+        return result.map(logEntity -> toItemResponse(logEntity, fullNameMap.get(logEntity.getUsername())));
+    }
+
+    private AuditLogItemResponse toItemResponse(ActionLog logEntity, String fullName) {
+        AuditLogItemResponse item = auditLogMapper.toItem(logEntity);
+        if (item == null) {
+            return null;
+        }
+        item.setRequestIp(logEntity.getRequestIp());
+        item.setFullName(StringUtils.hasText(fullName) ? fullName : logEntity.getUsername());
+
+        boolean isSuccess = (logEntity.getStatusCode() != null && logEntity.getStatusCode() < 400)
+                && !StringUtils.hasText(logEntity.getErrorCode());
+        item.setResult(isSuccess ? "SUCCESS" : "FAILED");
+
+        if (!StringUtils.hasText(item.getDescription())) {
+            String actionDesc = StringUtils.hasText(logEntity.getAction()) ? logEntity.getAction() :
+                    (logEntity.getRequestMethod() + " " + (logEntity.getRequestUrlPath() != null ? logEntity.getRequestUrlPath() : ""));
+            item.setDescription(actionDesc);
+        }
+        return item;
     }
 
     @Transactional(readOnly = true)
