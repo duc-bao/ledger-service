@@ -14,4 +14,9 @@ public class AdminCreateUserResponse {
     private String userType;
     private Boolean requireChange;
     private String groupId;
+    private String roleId;
+    private String roleName;
+    private String departmentId;
+    private String departmentName;
+    private com.ledger.ledgerservice.model.enums.UserStatus status;
 }

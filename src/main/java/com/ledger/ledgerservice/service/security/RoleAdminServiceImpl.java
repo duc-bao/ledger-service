@@ -62,7 +62,16 @@ public class RoleAdminServiceImpl implements RoleAdminService {
     @Transactional(readOnly = true)
     public Page<RoleResponse> searchRoles(String keyword, RecordStatus status, Pageable pageable) {
         String normalizedKeyword = StringUtils.hasText(keyword) ? keyword.trim().toLowerCase(Locale.ROOT) : "";
-        return groupRepository.searchRoles(normalizedKeyword, status, pageable).map(this::toResponse);
+        Page<Group> groups = groupRepository.searchRoles(normalizedKeyword, status, pageable);
+        java.util.List<String> groupIds = groups.getContent().stream().map(Group::getId).toList();
+        java.util.Map<String, Long> userCountMap = new java.util.HashMap<>();
+        if (!groupIds.isEmpty()) {
+            java.util.List<com.ledger.ledgerservice.model.entity.UserGroup> userGroups = userGroupRepository.findByGroupIdInAndStatus(groupIds, RecordStatus.ACTIVE);
+            userCountMap = userGroups.stream()
+                    .collect(java.util.stream.Collectors.groupingBy(com.ledger.ledgerservice.model.entity.UserGroup::getGroupId, java.util.stream.Collectors.counting()));
+        }
+        final java.util.Map<String, Long> finalCountMap = userCountMap;
+        return groups.map(g -> toResponse(g, finalCountMap.getOrDefault(g.getId(), 0L)));
     }
 
     @Override
@@ -94,26 +103,45 @@ public class RoleAdminServiceImpl implements RoleAdminService {
 
     @Override
     @Transactional
-    public void deleteRole(String roleId) {
+    public void deleteRole(String roleId, com.ledger.ledgerservice.model.dto.request.DeleteRoleRequest request) {
         Group group = groupRepository.findByIdAndStatus(roleId, RecordStatus.ACTIVE)
                 .orElseThrow(() -> new BusinessException(MessageCode.GROUP_NOT_FOUND, HttpStatus.NOT_FOUND));
         if (Boolean.TRUE.equals(group.getIsSuperAdmin()) || Boolean.TRUE.equals(group.getIsDefault())) {
             throw new BusinessException(MessageCode.CONFLICT, HttpStatus.CONFLICT);
         }
-        if (!userGroupRepository.findByGroupIdAndStatus(roleId, RecordStatus.ACTIVE).isEmpty()
-                || departmentUserRoleRepository.existsByGroupId(roleId)
+
+        long activeUserCount = userGroupRepository.countByGroupIdAndStatus(roleId, RecordStatus.ACTIVE);
+        if (activeUserCount > 0) {
+            java.util.Map<String, Object> errorData = java.util.Map.of(
+                    "code", "ROLE_HAS_USERS",
+                    "roleId", roleId,
+                    "roleName", group.getName(),
+                    "userCount", activeUserCount
+            );
+            throw new BusinessException(MessageCode.ROLE_HAS_USERS, HttpStatus.CONFLICT, errorData);
+        }
+
+        if (departmentUserRoleRepository.existsByGroupId(roleId)
                 || !companyUserRoleRepository.findByGroupIdAndStatus(roleId, RecordStatus.ACTIVE).isEmpty()
                 || !rolePermissionRepository.findByGroupIdAndStatus(roleId, RecordStatus.ACTIVE).isEmpty()) {
             throw new BusinessException(MessageCode.CONFLICT, HttpStatus.CONFLICT);
         }
 
         group.setStatus(RecordStatus.INACTIVE);
+        if (request != null && StringUtils.hasText(request.getDeleteReason())) {
+            group.setDeleteReason(request.getDeleteReason().trim());
+        }
         group.setUpdatedAt(LocalDateTime.now());
         group.setUpdatedBy(resolveActor());
         groupRepository.save(group);
     }
 
     private RoleResponse toResponse(Group group) {
+        long count = userGroupRepository.countByGroupIdAndStatus(group.getId(), RecordStatus.ACTIVE);
+        return toResponse(group, count);
+    }
+
+    private RoleResponse toResponse(Group group, Long userCount) {
         return RoleResponse.builder()
                 .id(group.getId())
                 .code(group.getCode())
@@ -123,6 +151,7 @@ public class RoleAdminServiceImpl implements RoleAdminService {
                 .isSuperAdmin(group.getIsSuperAdmin())
                 .sortOrder(group.getSortOrder())
                 .status(group.getStatus())
+                .userCount(userCount != null ? userCount : 0L)
                 .build();
     }
 

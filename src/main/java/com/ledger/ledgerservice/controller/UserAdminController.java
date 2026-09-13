@@ -74,10 +74,19 @@ public class UserAdminController {
         return responseHelper.ok(MessageCode.SUCCESS, null, HttpStatus.OK);
     }
 
+    @PostMapping("/{userId}/reset-password")
+    @Operation(summary = "Reset temporary password", description = "Reset user password to default and send email notification")
+    public ResponseEntity<BaseResponse<com.ledger.ledgerservice.model.dto.response.ResetPasswordResponse>> resetPassword(@PathVariable String userId) {
+        com.ledger.ledgerservice.model.dto.response.ResetPasswordResponse data = userAdminService.resetPassword(userId);
+        return responseHelper.ok(MessageCode.PASSWORD_RESET_SUCCESS, data, HttpStatus.OK);
+    }
+
     @DeleteMapping("/{userId}")
-    @Operation(summary = "Delete user account")
-    public ResponseEntity<BaseResponse<Object>> deleteUser(@PathVariable String userId) {
-        userAdminService.deleteUser(userId);
+    @Operation(summary = "Delete user account", description = "Safely delete user account after verifying admin password and inactive status")
+    public ResponseEntity<BaseResponse<Object>> deleteUser(
+            @PathVariable String userId,
+            @Valid @RequestBody com.ledger.ledgerservice.model.dto.request.DeleteUserRequest request) {
+        userAdminService.deleteUser(userId, request);
         return responseHelper.ok(MessageCode.SUCCESS, null, HttpStatus.OK);
     }
 }

@@ -27,15 +27,26 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import com.ledger.ledgerservice.model.entity.DepartmentEntity;
+import com.ledger.ledgerservice.model.entity.DepartmentUserEntity;
+import com.ledger.ledgerservice.model.entity.Group;
+import com.ledger.ledgerservice.model.entity.UserGroup;
+import com.ledger.ledgerservice.model.enums.RecordStatus;
+import com.ledger.ledgerservice.repository.DepartmentRepository;
+import com.ledger.ledgerservice.repository.DepartmentUserRepository;
+import com.ledger.ledgerservice.repository.GroupRepository;
+import com.ledger.ledgerservice.repository.UserGroupRepository;
+import org.springframework.beans.factory.annotation.Autowired;
+
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.time.Duration;
 
 @Service
-@RequiredArgsConstructor
 public class AuthService {
     private static final SecureRandom RANDOM = new SecureRandom();
 
@@ -48,6 +59,55 @@ public class AuthService {
     private final MessageHelper messageHelper;
     private final TokenBlacklistService tokenBlacklistService;
     private final AuthAttemptCacheService authAttemptCacheService;
+    private final UserGroupRepository userGroupRepository;
+    private final GroupRepository groupRepository;
+    private final DepartmentUserRepository departmentUserRepository;
+    private final DepartmentRepository departmentRepository;
+
+    public AuthService(
+            UserRepository userRepository,
+            PasswordEncoder passwordEncoder,
+            OtpCacheService otpCacheService,
+            EmailTemplateService emailTemplateService,
+            JwtUtils jwtUtils,
+            JwtProperties jwtProperties,
+            MessageHelper messageHelper,
+            TokenBlacklistService tokenBlacklistService,
+            AuthAttemptCacheService authAttemptCacheService
+    ) {
+        this(userRepository, passwordEncoder, otpCacheService, emailTemplateService, jwtUtils, jwtProperties, messageHelper, tokenBlacklistService, authAttemptCacheService, null, null, null, null);
+    }
+
+    @Autowired
+    public AuthService(
+            UserRepository userRepository,
+            PasswordEncoder passwordEncoder,
+            OtpCacheService otpCacheService,
+            EmailTemplateService emailTemplateService,
+            JwtUtils jwtUtils,
+            JwtProperties jwtProperties,
+            MessageHelper messageHelper,
+            TokenBlacklistService tokenBlacklistService,
+            AuthAttemptCacheService authAttemptCacheService,
+            @Autowired(required = false) UserGroupRepository userGroupRepository,
+            @Autowired(required = false) GroupRepository groupRepository,
+            @Autowired(required = false) DepartmentUserRepository departmentUserRepository,
+            @Autowired(required = false) DepartmentRepository departmentRepository
+    ) {
+        this.userRepository = userRepository;
+        this.passwordEncoder = passwordEncoder;
+        this.otpCacheService = otpCacheService;
+        this.emailTemplateService = emailTemplateService;
+        this.jwtUtils = jwtUtils;
+        this.jwtProperties = jwtProperties;
+        this.messageHelper = messageHelper;
+        this.tokenBlacklistService = tokenBlacklistService;
+        this.authAttemptCacheService = authAttemptCacheService;
+        this.userGroupRepository = userGroupRepository;
+        this.groupRepository = groupRepository;
+        this.departmentUserRepository = departmentUserRepository;
+        this.departmentRepository = departmentRepository;
+    }
 
     private String resolveClientIp() {
         return RequestContextHolder.get() != null ? RequestContextHolder.get().getRequestIp() : null;
@@ -126,6 +186,7 @@ public class AuthService {
         return LoginTokenResponse.builder()
                 .twoFactorRequired(true)
                 .remainingAttempts(5)
+                .isActiveCaptcha(Boolean.TRUE.equals(user.getIsActiveCaptcha()))
                 .build();
     }
 
@@ -339,9 +400,38 @@ public class AuthService {
     }
 
     private LoginTokenResponse issueLoginToken(User user, boolean twoFactorRequired) {
+        String roleName = null;
+        if (userGroupRepository != null && groupRepository != null) {
+            List<UserGroup> userGroups = userGroupRepository.findByUserIdAndStatus(user.getId(), RecordStatus.ACTIVE);
+            if (!userGroups.isEmpty()) {
+                roleName = groupRepository.findById(userGroups.get(0).getGroupId())
+                        .map(Group::getName)
+                        .orElse(null);
+            }
+        }
+
+        String departmentName = null;
+        if (departmentUserRepository != null && departmentRepository != null) {
+            List<DepartmentUserEntity> deptUsers = departmentUserRepository.findByUserIdAndStatus(user.getId(), RecordStatus.ACTIVE);
+            if (!deptUsers.isEmpty()) {
+                departmentName = departmentRepository.findById(deptUsers.get(0).getDepartmentId())
+                        .map(DepartmentEntity::getName)
+                        .orElse(null);
+            }
+        }
+
         Map<String, Object> claims = new HashMap<>();
         claims.put("userId", user.getId());
         claims.put("username", user.getUsername());
+        if (StringUtils.hasText(user.getFullName())) {
+            claims.put("fullName", user.getFullName());
+        }
+        if (StringUtils.hasText(roleName)) {
+            claims.put("roleName", roleName);
+        }
+        if (StringUtils.hasText(departmentName)) {
+            claims.put("departmentName", departmentName);
+        }
 
         int ttlSeconds = jwtProperties.getTimeToLive() != null ? jwtProperties.getTimeToLive() : 3600;
         String secret = StringUtils.hasText(jwtProperties.getSecret()) ? jwtProperties.getSecret() : jwtProperties.getKey();
@@ -355,6 +445,10 @@ public class AuthService {
                 .tokenType("Bearer")
                 .expiresInSeconds(ttlSeconds)
                 .twoFactorRequired(twoFactorRequired)
+                .isActiveCaptcha(Boolean.TRUE.equals(user.getIsActiveCaptcha()))
+                .fullName(user.getFullName())
+                .roleName(roleName)
+                .departmentName(departmentName)
                 .build();
     }
 

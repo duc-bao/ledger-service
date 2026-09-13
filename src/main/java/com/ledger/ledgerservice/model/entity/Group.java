@@ -51,5 +51,8 @@ public class Group extends EntityBase {
     @Column(name = "sort_order", nullable = false)
     @Builder.Default
     private Integer sortOrder = 0;
+
+    @Column(name = "delete_reason", length = 500)
+    private String deleteReason;
 }
 

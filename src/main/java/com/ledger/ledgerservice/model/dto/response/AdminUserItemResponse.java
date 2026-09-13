@@ -21,6 +21,11 @@ public class AdminUserItemResponse {
     private String groupId;
     private String groupCode;
     private String groupName;
+    private String roleId;
+    private String roleCode;
+    private String roleName;
+    private String departmentId;
+    private String departmentName;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

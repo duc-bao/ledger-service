@@ -14,6 +14,10 @@ import com.ledger.ledgerservice.model.enums.UserStatus;
 import com.ledger.ledgerservice.repository.GroupRepository;
 import com.ledger.ledgerservice.repository.UserGroupRepository;
 import com.ledger.ledgerservice.repository.UserRepository;
+import com.ledger.ledgerservice.model.entity.DepartmentEntity;
+import com.ledger.ledgerservice.model.entity.DepartmentUserEntity;
+import com.ledger.ledgerservice.repository.DepartmentRepository;
+import com.ledger.ledgerservice.repository.DepartmentUserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -27,6 +31,8 @@ public class AccessControlAdminService {
     private final UserRepository userRepository;
     private final GroupRepository groupRepository;
     private final UserGroupRepository userGroupRepository;
+    private final DepartmentRepository departmentRepository;
+    private final DepartmentUserRepository departmentUserRepository;
     private final PasswordEncoder passwordEncoder;
 
     @Transactional
@@ -58,11 +64,21 @@ public class AccessControlAdminService {
             throw new BusinessException(MessageCode.USER_PHONE_EXISTS, HttpStatus.CONFLICT);
         }
 
+        String roleId = StringUtils.hasText(request.getRoleId()) ? request.getRoleId().trim() : trimNullable(request.getGroupId());
         Group group = null;
-        if (StringUtils.hasText(request.getGroupId())) {
-            group = groupRepository.findByIdAndStatus(request.getGroupId().trim(), RecordStatus.ACTIVE)
+        if (StringUtils.hasText(roleId)) {
+            group = groupRepository.findByIdAndStatus(roleId, RecordStatus.ACTIVE)
                     .orElseThrow(() -> new BusinessException(MessageCode.GROUP_NOT_FOUND, HttpStatus.NOT_FOUND));
         }
+
+        DepartmentEntity department = null;
+        if (StringUtils.hasText(request.getDepartmentId())) {
+            department = departmentRepository.findById(request.getDepartmentId().trim())
+                    .filter(d -> Boolean.TRUE.equals(d.getIsActive()))
+                    .orElseThrow(() -> new BusinessException(MessageCode.NOT_FOUND, HttpStatus.NOT_FOUND));
+        }
+
+        UserStatus userStatus = request.getStatus() != null ? request.getStatus() : UserStatus.ACTIVE;
 
         User user = userRepository.save(User.builder()
                 .username(username)
@@ -72,11 +88,20 @@ public class AccessControlAdminService {
                 .fullName(trimNullable(request.getFullName()))
                 .userType(trimNullable(request.getUserType()))
                 .requireChange(Boolean.TRUE.equals(request.getRequireChange()))
-                .status(UserStatus.ACTIVE)
+                .status(userStatus)
                 .build());
 
         if (group != null) {
             userGroupRepository.save(UserGroup.builder().userId(user.getId()).groupId(group.getId()).status(RecordStatus.ACTIVE).build());
+        }
+
+        if (department != null) {
+            departmentUserRepository.save(DepartmentUserEntity.builder()
+                    .userId(user.getId())
+                    .departmentId(department.getId())
+                    .isPrimary(Boolean.TRUE)
+                    .status(RecordStatus.ACTIVE)
+                    .build());
         }
 
         return AdminCreateUserResponse.builder()
@@ -88,6 +113,11 @@ public class AccessControlAdminService {
                 .userType(user.getUserType())
                 .requireChange(user.getRequireChange())
                 .groupId(group != null ? group.getId() : null)
+                .roleId(group != null ? group.getId() : null)
+                .roleName(group != null ? group.getName() : null)
+                .departmentId(department != null ? department.getId() : null)
+                .departmentName(department != null ? department.getName() : null)
+                .status(user.getStatus())
                 .build();
     }
 

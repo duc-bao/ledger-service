@@ -10,6 +10,10 @@ public class LoginTokenResponse {
     private String tokenType;
     private long expiresInSeconds;
     private boolean twoFactorRequired;
+    private boolean isActiveCaptcha;
+    private String fullName;
+    private String roleName;
+    private String departmentName;
     private int remainingAttempts;
     private long lockSeconds;
 }

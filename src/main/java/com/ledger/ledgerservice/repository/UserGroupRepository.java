@@ -20,6 +20,10 @@ public interface UserGroupRepository extends JpaRepository<UserGroup, String> {
 
     List<UserGroup> findByGroupIdAndStatus(String groupId, RecordStatus status);
 
+    long countByGroupIdAndStatus(String groupId, RecordStatus status);
+
+    List<UserGroup> findByGroupIdInAndStatus(Collection<String> groupIds, RecordStatus status);
+
     List<UserGroup> findByUserIdIn(Collection<String> userIds);
 
     List<UserGroup> findByUserIdInAndStatus(Collection<String> userIds, RecordStatus status);

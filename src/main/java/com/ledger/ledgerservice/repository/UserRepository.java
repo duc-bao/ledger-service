@@ -22,6 +22,7 @@ public interface UserRepository extends JpaRepository<User, String> {
     boolean existsByEmailIgnoreCase(String email);
     boolean existsByPhone(String phone);
     List<User> findAllByStatus(UserStatus status);
+    List<User> findByUsernameIn(java.util.Collection<String> usernames);
 
     @Query("""
             SELECT u FROM User u

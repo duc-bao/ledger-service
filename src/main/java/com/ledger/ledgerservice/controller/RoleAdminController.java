@@ -62,8 +62,10 @@ public class RoleAdminController {
 
     @DeleteMapping("/{roleId}")
     @Operation(summary = "Delete role")
-    public ResponseEntity<BaseResponse<Object>> deleteRole(@PathVariable String roleId) {
-        roleAdminService.deleteRole(roleId);
+    public ResponseEntity<BaseResponse<Object>> deleteRole(
+            @PathVariable String roleId,
+            @RequestBody(required = false) com.ledger.ledgerservice.model.dto.request.DeleteRoleRequest request) {
+        roleAdminService.deleteRole(roleId, request);
         return responseHelper.ok(MessageCode.SUCCESS, HttpStatus.OK);
     }
 }

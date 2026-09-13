@@ -75,5 +75,15 @@ public class User extends EntityBase {
     @Column(name = "status", nullable = false, length = 20)
     @Builder.Default
     private UserStatus status = UserStatus.ACTIVE;
+
+    @Column(name = "last_password_changed_at")
+    private LocalDateTime lastPasswordChangedAt;
+
+    @Column(name = "is_active_captcha", nullable = false)
+    @Builder.Default
+    private Boolean isActiveCaptcha = false;
+
+    @Column(name = "delete_reason", length = 500)
+    private String deleteReason;
 }
 
