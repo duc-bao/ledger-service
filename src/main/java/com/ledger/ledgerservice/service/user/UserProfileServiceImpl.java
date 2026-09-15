@@ -87,27 +87,24 @@ public class UserProfileServiceImpl implements UserProfileService {
     public UserProfileResponse updateMyProfile(UpdateMyProfileRequest request) {
         User user = getCurrentUser();
 
-        String normalizedEmail = normalize(request.getEmail());
-        if (StringUtils.hasText(normalizedEmail)) {
-            userRepository.findByEmail(normalizedEmail)
-                    .filter(exist -> !exist.getId().equals(user.getId()))
-                    .ifPresent(exist -> {
-                        throw new BusinessException(MessageCode.EXISTED, HttpStatus.CONFLICT);
-                    });
-        }
-
+        // 1. Cập nhật phone (chỉ khi có truyền lên và khác giá trị hiện tại; nếu không truyền thì giữ nguyên giá trị cũ)
         String normalizedPhone = normalize(request.getPhone());
-        if (StringUtils.hasText(normalizedPhone)) {
+        if (StringUtils.hasText(normalizedPhone) && !normalizedPhone.equals(user.getPhone())) {
             userRepository.findByPhone(normalizedPhone)
                     .filter(exist -> !exist.getId().equals(user.getId()))
                     .ifPresent(exist -> {
                         throw new BusinessException(MessageCode.EXISTED, HttpStatus.CONFLICT);
                     });
+            user.setPhone(normalizedPhone);
         }
 
-        user.setEmail(normalizedEmail);
-        user.setPhone(normalizedPhone);
-        user.setFullName(normalize(request.getFullName()));
+        // 2. Cập nhật fullName (chỉ khi có truyền lên; nếu không truyền thì giữ nguyên giá trị cũ)
+        String normalizedFullName = normalize(request.getFullName());
+        if (StringUtils.hasText(normalizedFullName)) {
+            user.setFullName(normalizedFullName);
+        }
+
+        // Tuyệt đối không thay đổi username và email - giữ nguyên giá trị cũ trên hệ thống
         user.setUpdatedBy(user.getUsername());
         user.setUpdatedAt(LocalDateTime.now());
 
@@ -150,6 +147,7 @@ public class UserProfileServiceImpl implements UserProfileService {
                 throw new BusinessException(MessageCode.PASSWORD_INVALID, HttpStatus.BAD_REQUEST);
             }
         }
+        user.setIsActiveCaptcha(request.getIsCaptcha());
         user.setTwoFactorEnabled(newEnabled);
         user.setUpdatedBy(user.getUsername());
         user.setUpdatedAt(LocalDateTime.now());

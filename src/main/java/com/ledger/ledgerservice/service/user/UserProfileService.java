@@ -7,7 +7,10 @@ import com.ledger.ledgerservice.model.dto.response.UserProfileResponse;
 
 public interface UserProfileService {
     UserProfileResponse getMyProfile();
+
     UserProfileResponse updateMyProfile(UpdateMyProfileRequest request);
+
     void changeMyPassword(ChangePasswordRequest request);
+
     UserProfileResponse updateTwoFactor(UpdateTwoFactorRequest request);
 }

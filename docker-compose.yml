@@ -53,6 +53,7 @@ services:
       APP_SUPER_PASSWORD: ${APP_SUPER_PASSWORD:-123456a@}
       CORS_ALLOWED_ORIGIN_1: ${CORS_ALLOWED_ORIGIN_1:-https://ob-consent.savyint.com}
       CORS_ALLOWED_ORIGIN_2: ${CORS_ALLOWED_ORIGIN_2:-https://iam-uat.savyint.com}
+      SWAGGER_SERVER_URL: ${SWAGGER_SERVER_URL:-/}
     depends_on:
       postgres:
         condition: service_healthy

@@ -57,6 +57,18 @@ redisson:
   timeout: 3000
 server:
   port: 8091
+  forward-headers-strategy: framework
+
+swagger:
+  server-url: ${SWAGGER_SERVER_URL:/}
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui/index.html
+    display-request-duration: true
+    try-it-out-enabled: true
 
 i18n:
   default-locale: vi-VN
