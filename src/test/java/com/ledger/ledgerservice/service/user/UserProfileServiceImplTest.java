@@ -68,4 +68,58 @@ class UserProfileServiceImplTest {
         org.junit.jupiter.api.Assertions.assertThrows(com.ledger.ledgerservice.exception.BusinessException.class,
                 () -> service.updateTwoFactor(request));
     }
+
+    @Test
+    void updateMyProfilePreservesUnchangedFieldsAndDoesNotModifyEmailOrUsername() {
+        User user = User.builder()
+                .id("user-1")
+                .username("original_user")
+                .email("original@ledger.local")
+                .phone("0901112222")
+                .fullName("Original Name")
+                .status(UserStatus.ACTIVE)
+                .build();
+        when(userRepository.findByUsername("user1")).thenReturn(Optional.of(user));
+        when(userRepository.findByPhone("0987654321")).thenReturn(Optional.empty());
+        when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        com.ledger.ledgerservice.model.dto.request.UpdateMyProfileRequest request =
+                com.ledger.ledgerservice.model.dto.request.UpdateMyProfileRequest.builder()
+                        .phone("0987654321")
+                        .build();
+
+        UserProfileResponse response = service.updateMyProfile(request);
+
+        org.junit.jupiter.api.Assertions.assertEquals("0987654321", response.getPhone());
+        org.junit.jupiter.api.Assertions.assertEquals("Original Name", response.getFullName());
+        org.junit.jupiter.api.Assertions.assertEquals("original@ledger.local", response.getEmail());
+        org.junit.jupiter.api.Assertions.assertEquals("original_user", response.getUsername());
+    }
+
+    @Test
+    void updateMyProfileUpdatesFullNameAndKeepsExistingPhone() {
+        User user = User.builder()
+                .id("user-1")
+                .username("original_user")
+                .email("original@ledger.local")
+                .phone("0901112222")
+                .fullName("Original Name")
+                .status(UserStatus.ACTIVE)
+                .build();
+        when(userRepository.findByUsername("user1")).thenReturn(Optional.of(user));
+        when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        com.ledger.ledgerservice.model.dto.request.UpdateMyProfileRequest request =
+                com.ledger.ledgerservice.model.dto.request.UpdateMyProfileRequest.builder()
+                        .fullName("New Full Name")
+                        .build();
+
+        UserProfileResponse response = service.updateMyProfile(request);
+
+        org.junit.jupiter.api.Assertions.assertEquals("New Full Name", response.getFullName());
+        org.junit.jupiter.api.Assertions.assertEquals("0901112222", response.getPhone());
+        org.junit.jupiter.api.Assertions.assertEquals("original@ledger.local", response.getEmail());
+        org.junit.jupiter.api.Assertions.assertEquals("original_user", response.getUsername());
+    }
 }
+

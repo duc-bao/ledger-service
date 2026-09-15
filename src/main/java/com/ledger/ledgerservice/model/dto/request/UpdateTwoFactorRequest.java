@@ -9,4 +9,7 @@ public class UpdateTwoFactorRequest {
     private Boolean enabled;
 
     private String password;
+
+    @NotNull(message = "validation.twoFactor.enabled.required")
+    private Boolean isCaptcha = false;
 }
